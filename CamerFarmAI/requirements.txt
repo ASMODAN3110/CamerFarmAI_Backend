@@ -1,0 +1,37 @@
+# CamerFarm AI – Web App Requirements
+
+# Runtime / Tooling
+node>=18.17.0
+npm>=10.0.0
+postgresql>=14
+
+# Backend (npm install à la racine Backend/CamerFarmAI)
+# Dépendances runtime
+bcrypt@^6.0.0
+body-parser@^2.2.0
+cookie-parser@^1.4.7
+cors@^2.8.5
+dotenv@^17.2.3
+express@^5.1.0
+express-validator@^7.3.1
+helmet@^8.1.0
+jsonwebtoken@^9.0.2
+pg@^8.16.3
+reflect-metadata@^0.2.2
+ts-node@^10.9.2
+typeorm@^0.3.27
+typescript@^5.9.3
+
+# Dépendances de typage / développement
+@types/bcrypt@^6.0.0
+@types/body-parser@^1.19.6
+@types/cookie-parser@^1.4.10
+@types/cors@^2.8.19
+@types/express@^5.0.5
+@types/helmet@^0.0.48
+@types/jsonwebtoken@^9.0.10
+@types/node@^24.10.1
+nodemon@^3.1.11
+
+
+

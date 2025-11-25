@@ -1,0 +1,81 @@
+# Dépendances et caches Node
+node_modules/
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+*.tsbuildinfo
+
+# Builds et artefacts compilés
+dist/
+build/
+coverage/
+.nyc_output/
+src/**/*.js
+src/**/*.js.map
+src/**/*.d.ts
+src/migrations/*.js
+
+# Logs et rapports
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# Environnements et secrets
+.env
+.env.*
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.backup
+
+# Bases de données et dumps locaux
+*.sqlite
+*.sqlite3
+*.db
+*.sql
+*.dump
+*.backup
+*.pg_dump
+
+# Outils, IDE et OS
+.idea/
+.vscode/
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+desktop.ini
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+.project
+.classpath
+.settings/
+
+# Fichiers temporaires / caches
+tmp/
+temp/
+*.tmp
+*.temp
+.cache/
+.parcel-cache/
+.temp/
+
+# Uploads et sorties locales
+uploads/
+public/uploads/
+sessions/
+
+# Fichiers de documentation générés
+docs/build/
+
+# Configurations locales sensibles
+config/local.json
+config/local.js
