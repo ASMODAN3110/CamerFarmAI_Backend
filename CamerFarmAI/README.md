@@ -143,6 +143,9 @@ REFRESH_TOKEN_EXPIRES_IN=7d
 # Serveur
 PORT=3000
 NODE_ENV=development
+
+# Frontend (optionnel, par défaut: http://localhost:5173)
+FRONTEND_URL=http://localhost:5173
 ```
 
 ## Scripts disponibles
@@ -209,6 +212,98 @@ Cookie: refreshToken=<refresh_token>
 ```bash
 POST /api/v1/auth/logout
 Authorization: Bearer <access_token>
+```
+
+### Exemples d'appels depuis le frontend
+
+#### Configuration de base (fetch avec credentials)
+
+```typescript
+// Configuration de l'URL de base
+const API_BASE_URL = 'http://localhost:3000/api/v1';
+
+// Fonction utilitaire pour les appels API
+async function apiCall(endpoint: string, options: RequestInit = {}) {
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    ...options,
+    credentials: 'include', // Nécessaire pour envoyer/recevoir les cookies
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    },
+  });
+  return response.json();
+}
+```
+
+#### Inscription
+```typescript
+const registerData = await apiCall('/auth/register', {
+  method: 'POST',
+  body: JSON.stringify({
+    phone: '690123456',
+    password: 'monMotDePasse123',
+    firstName: 'Pauline',
+    lastName: 'Ndoumbé',
+    email: 'pauline@example.com'
+  })
+});
+
+// Le refreshToken est automatiquement stocké dans un cookie HttpOnly
+// L'accessToken est retourné dans la réponse
+localStorage.setItem('accessToken', registerData.data.accessToken);
+```
+
+#### Connexion
+```typescript
+const loginData = await apiCall('/auth/login', {
+  method: 'POST',
+  body: JSON.stringify({
+    email: 'pauline@example.com',
+    password: 'monMotDePasse123'
+  })
+});
+
+// Le refreshToken est automatiquement stocké dans un cookie HttpOnly
+// L'accessToken est retourné dans la réponse
+localStorage.setItem('accessToken', loginData.data.accessToken);
+```
+
+#### Récupérer le profil (protégé)
+```typescript
+const profile = await apiCall('/auth/me', {
+  method: 'GET',
+  headers: {
+    'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+  }
+});
+```
+
+#### Rafraîchir le token
+```typescript
+// Le refreshToken est automatiquement envoyé via le cookie
+const refreshData = await apiCall('/auth/refresh', {
+  method: 'POST'
+});
+
+// Mettre à jour l'accessToken
+localStorage.setItem('accessToken', refreshData.accessToken);
+```
+
+#### Déconnexion
+```typescript
+await apiCall('/auth/logout', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+  }
+});
+
+// Nettoyer le token local
+localStorage.removeItem('accessToken');
+```
+
+**Note importante** : Le frontend doit configurer `credentials: 'include'` dans toutes les requêtes fetch pour que les cookies HttpOnly soient envoyés automatiquement.
 
 ### Gestion des rôles
 
@@ -353,7 +448,9 @@ export enum UserRole {
 - Les nouveaux utilisateurs sont créés avec le rôle `FARMER` par défaut
 - L'authentification utilise JWT avec support des cookies HttpOnly pour les refresh tokens
 - L'enum `UserRole` est utilisé pour garantir la cohérence des rôles dans toute l'application
-- Le CORS est configuré pour accepter les requêtes depuis `http://localhost:5173` (frontend Vite)
+- Le CORS est configuré pour accepter les requêtes depuis le frontend (par défaut `http://localhost:5173`, configurable via `FRONTEND_URL`)
+- Les cookies HttpOnly sont activés avec `credentials: true` pour permettre l'authentification cross-origin
+- En développement, les cookies utilisent `sameSite: 'lax'` pour fonctionner correctement avec le frontend
 
 ## Développement
 

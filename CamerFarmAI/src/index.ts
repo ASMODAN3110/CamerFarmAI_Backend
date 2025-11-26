@@ -18,8 +18,18 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middlewares de sécurité et configuration
-app.use(helmet());  // Sécurité headers
-app.use(cors({ origin: 'http://localhost:5173' }));  // Pour ton frontend Vite
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));  // Sécurité headers avec support CORS
+
+// Configuration CORS pour permettre les cookies depuis le frontend
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  credentials: true,  // Nécessaire pour envoyer/recevoir les cookies HttpOnly
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+
 app.use(bodyParser.json());
 app.use(cookieParser());  // Pour lire les cookies
 
