@@ -117,13 +117,13 @@ export const optionalAuth = async (
       const userId = decoded.sub;
       
       if (userId) {
-        const userRepository = AppDataSource.getRepository(User);
-        const user = await userRepository.findOne({
+      const userRepository = AppDataSource.getRepository(User);
+      const user = await userRepository.findOne({
           where: { id: userId },
           select: ['id', 'phone', 'firstName', 'lastName', 'email', 'role', 'createdAt', 'updatedAt'],
-        });
+      });
 
-        if (user) req.user = user;
+      if (user) req.user = user;
       }
     }
   } catch (error) {
