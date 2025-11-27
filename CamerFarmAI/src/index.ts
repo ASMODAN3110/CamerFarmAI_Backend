@@ -11,6 +11,7 @@ import cookieParser from 'cookie-parser';
 import path from 'path';
 import 'reflect-metadata';  // Pour TypeORM
 import authRouter from './routes/auth.routes';
+import plantationRouter from './routes/plantation.routes';  // Ajouter cette ligne
 
 // Importer la configuration de la base de données
 import { AppDataSource } from './config/database';
@@ -39,6 +40,7 @@ app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
 // Importer et monter les routes 
 app.use('/api/v1/auth', authRouter);
+app.use('/api/v1/plantations', plantationRouter);  // Ajouter cette ligne
 
 
 

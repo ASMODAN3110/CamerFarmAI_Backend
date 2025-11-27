@@ -5,8 +5,10 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   BeforeInsert,
+  OneToMany,
 } from 'typeorm';
 import * as bcrypt from 'bcrypt';
+import { Plantation } from './Plantation.entity';
 
 export enum UserRole {
   FARMER = 'farmer',
@@ -50,6 +52,9 @@ export class User {
 
   @UpdateDateColumn()
   updatedAt!: Date;
+
+  @OneToMany(() => Plantation, plantation => plantation.owner)
+  plantations!: Plantation[];
 
   @BeforeInsert()
   async hashPassword() {
