@@ -1,9 +1,8 @@
 // src/controllers/auth.controller.ts
 import { Request, Response } from 'express';
 import { AuthService } from '../services/auth.service';
-import { RegisterDto, LoginDto } from '../types/auth.types';
+import { RegisterDto, LoginDto, UpdateProfileDto } from '../types/auth.types';
 import { validationResult } from 'express-validator';
-import { User } from '../models/User.entity';
 import { HttpException } from '../utils/HttpException';
 
 /**
@@ -179,7 +178,14 @@ export const refresh = async (req: Request, res: Response) => {
  */
 export const getMe = async (req: Request, res: Response) => {
   // req.user est ajouté par le middleware protectRoute
-  const user = (req as any).user as User;
+  const user = req.user;
+
+  if (!user) {
+    return res.status(401).json({
+      success: false,
+      message: 'Utilisateur non authentifié',
+    });
+  }
 
   return res.json({
     success: true,
@@ -209,5 +215,108 @@ export const logout = async (_req: Request, res: Response) => {
   return res.json({
     success: true,
     message: 'Déconnexion réussie',
+  });
+};
+
+/**
+ * PUT /api/v1/auth/profile
+ * Mettre à jour le profil de l'utilisateur connecté
+ */
+export const updateProfile = async (req: Request, res: Response) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: 'Données invalides',
+      errors: errors.array(),
+    });
+  }
+
+  const user = req.user;
+  if (!user) {
+    return res.status(401).json({
+      success: false,
+      message: 'Utilisateur non authentifié',
+    });
+  }
+
+  const dto: UpdateProfileDto = req.body;
+
+  try {
+    const updatedUser = await AuthService.updateProfile(user.id, dto);
+
+    return res.json({
+      success: true,
+      message: 'Profil mis à jour avec succès',
+      data: {
+        id: updatedUser.id,
+        phone: updatedUser.phone,
+        firstName: updatedUser.firstName,
+        lastName: updatedUser.lastName,
+        email: updatedUser.email,
+        role: updatedUser.role,
+        updatedAt: updatedUser.updatedAt,
+      },
+    });
+  } catch (error: any) {
+    console.error('Erreur mise à jour profil - Détails:', {
+      message: error?.message,
+      stack: error?.stack,
+      name: error?.name,
+    });
+
+    if (error instanceof HttpException) {
+      return res.status(error.statusCode).json({
+        success: false,
+        message: error.message,
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: error?.message || 'Erreur serveur lors de la mise à jour du profil',
+      ...(process.env.NODE_ENV === 'development' && {
+        error: error?.message,
+        stack: error?.stack,
+      }),
+    });
+  }
+};
+
+/**
+ * POST /api/v1/auth/profile/avatar
+ * Upload de l'avatar de l'utilisateur connecté
+ */
+export const uploadAvatar = async (req: Request, res: Response) => {
+  const user = req.user;
+  if (!user) {
+    return res.status(401).json({
+      success: false,
+      message: 'Utilisateur non authentifié',
+    });
+  }
+
+  const anyReq = req as any;
+
+  if (!anyReq.file) {
+    return res.status(400).json({
+      success: false,
+      message: 'Aucun fichier reçu. Le champ \"avatar\" est requis.',
+    });
+  }
+
+  const file = anyReq.file;
+
+  // Construire l'URL publique de l'avatar
+  const baseUrl = `${req.protocol}://${req.get('host')}`;
+  const avatarUrl = `${baseUrl}/uploads/avatars/${file.filename}`;
+
+  return res.status(201).json({
+    success: true,
+    message: 'Avatar uploadé avec succès',
+    data: {
+      userId: user.id,
+      avatarUrl,
+    },
   });
 };

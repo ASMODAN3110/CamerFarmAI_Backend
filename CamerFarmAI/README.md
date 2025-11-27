@@ -167,6 +167,8 @@ npm run migration:generate # Générer une nouvelle migration
 | POST | `/login` | Connexion utilisateur | Public |
 | POST | `/refresh` | Rafraîchir le token d'accès | Public |
 | GET | `/me` | Récupérer les infos de l'utilisateur connecté | Privé |
+| PUT | `/profile` | Mettre à jour le profil utilisateur | Privé |
+| POST | `/profile/avatar` | Upload de l'avatar utilisateur (multipart/form-data) | Privé |
 | POST | `/logout` | Déconnexion | Privé |
 
 ### Exemples de requêtes
@@ -206,6 +208,42 @@ Authorization: Bearer <access_token>
 ```bash
 POST /api/v1/auth/refresh
 Cookie: refreshToken=<refresh_token>
+```
+
+#### Mettre à jour le profil
+```bash
+PUT /api/v1/auth/profile
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "firstName": "Pauline",
+  "lastName": "Ndoumbé",
+  "email": "nouveau@example.com",
+  "phone": "690123456"
+}
+```
+
+#### Upload de l'avatar utilisateur
+```bash
+POST /api/v1/auth/profile/avatar
+Authorization: Bearer <access_token>
+Content-Type: multipart/form-data
+
+Form-data:
+  avatar: <fichier image>
+```
+
+Réponse:
+```json
+{
+  "success": true,
+  "message": "Avatar uploadé avec succès",
+  "data": {
+    "userId": "<uuid>",
+    "avatarUrl": "http://localhost:3000/uploads/avatars/<nom-du-fichier>"
+  }
+}
 ```
 
 #### Déconnexion
@@ -288,6 +326,22 @@ const refreshData = await apiCall('/auth/refresh', {
 
 // Mettre à jour l'accessToken
 localStorage.setItem('accessToken', refreshData.accessToken);
+```
+
+#### Mettre à jour le profil
+```typescript
+const updatedProfile = await apiCall('/auth/profile', {
+  method: 'PUT',
+  headers: {
+    'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+  },
+  body: JSON.stringify({
+    firstName: 'Pauline',
+    lastName: 'Ndoumbé',
+    email: 'nouveau@example.com',
+    phone: '690123456'
+  })
+});
 ```
 
 #### Déconnexion

@@ -1,7 +1,7 @@
 // src/services/auth.service.ts
 import { AppDataSource } from '../config/database';
 import { User, UserRole } from '../models/User.entity';
-import { RegisterDto } from '../types/auth.types';
+import { RegisterDto, UpdateProfileDto } from '../types/auth.types';
 import * as jwt from 'jsonwebtoken';
 import type { SignOptions } from 'jsonwebtoken';
 import { HttpException } from '../utils/HttpException';
@@ -96,5 +96,41 @@ export class AuthService {
     } catch {
       return null;
     }
+  }
+
+  // 6. Mise à jour du profil utilisateur
+  static async updateProfile(userId: string, dto: UpdateProfileDto): Promise<User> {
+    const user = await userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new HttpException(404, 'Utilisateur non trouvé');
+    }
+
+    // Vérifier l'unicité du téléphone si modifié
+    if (dto.phone && dto.phone !== user.phone) {
+      const existingUserByPhone = await userRepository.findOne({ where: { phone: dto.phone } });
+      if (existingUserByPhone) {
+        throw new HttpException(409, 'Ce numéro de téléphone est déjà utilisé');
+      }
+      user.phone = dto.phone;
+    }
+
+    // Vérifier l'unicité de l'email si modifié
+    if (dto.email && dto.email !== user.email) {
+      const existingUserByEmail = await userRepository.findOne({ where: { email: dto.email } });
+      if (existingUserByEmail) {
+        throw new HttpException(409, 'Cet email est déjà utilisé');
+      }
+      user.email = dto.email;
+    }
+
+    // Mettre à jour les autres champs
+    if (dto.firstName !== undefined) {
+      user.firstName = dto.firstName;
+    }
+    if (dto.lastName !== undefined) {
+      user.lastName = dto.lastName;
+    }
+
+    return await userRepository.save(user);
   }
 }
