@@ -12,3 +12,11 @@ export class RegisterDto {
     email!: string;
     password!: string;
   }
+
+  // UpdateProfileDto
+  export class UpdateProfileDto {
+    phone?: string;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+  }

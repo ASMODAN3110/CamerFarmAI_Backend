@@ -8,6 +8,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import bodyParser from 'body-parser';
 import cookieParser from 'cookie-parser';
+import path from 'path';
 import 'reflect-metadata';  // Pour TypeORM
 import authRouter from './routes/auth.routes';
 
@@ -32,6 +33,9 @@ app.use(cors({
 
 app.use(bodyParser.json());
 app.use(cookieParser());  // Pour lire les cookies
+
+// Servir les fichiers uploadés (avatars, etc.)
+app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
 // Importer et monter les routes 
 app.use('/api/v1/auth', authRouter);

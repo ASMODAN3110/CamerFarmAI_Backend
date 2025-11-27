@@ -3,6 +3,7 @@ import { Router } from 'express';
 import * as authController from '../controllers/auth.controllers';
 import { protectRoute } from '../middleware/auth.middleware';
 import { body } from 'express-validator';
+import { avatarUpload } from '../middleware/upload.middleware';
 
 const authRouter = Router();
 
@@ -40,6 +41,32 @@ const validateLogin = [
   body('password')
     .notEmpty()
     .withMessage('Le mot de passe est requis'),
+];
+
+// Middlewares de validation pour la mise à jour du profil
+const validateUpdateProfile = [
+  body('phone')
+    .optional()
+    .isMobilePhone('any')
+    .withMessage('Le numéro de téléphone doit être valide'),
+  body('firstName')
+    .optional()
+    .isString()
+    .withMessage('Le prénom doit être une chaîne de caractères')
+    .trim()
+    .notEmpty()
+    .withMessage('Le prénom ne peut pas être vide'),
+  body('lastName')
+    .optional()
+    .isString()
+    .withMessage('Le nom doit être une chaîne de caractères')
+    .trim()
+    .notEmpty()
+    .withMessage('Le nom ne peut pas être vide'),
+  body('email')
+    .optional()
+    .isEmail()
+    .withMessage('L\'email doit être valide'),
 ];
 
 /**
@@ -83,6 +110,27 @@ authRouter.get('/me', protectRoute, authController.getMe);
  * @Jira    CA-40
  */
 authRouter.post('/logout', protectRoute, authController.logout);
+
+/**
+ * @route   PUT /api/v1/auth/profile
+ * @desc    Mettre à jour le profil de l'utilisateur connecté
+ * @access  Privé (protégé par JWT)
+ * @Jira    CA-42
+ */
+authRouter.put('/profile', protectRoute, validateUpdateProfile, authController.updateProfile);
+
+/**
+ * @route   POST /api/v1/auth/profile/avatar
+ * @desc    Upload de l'avatar de l'utilisateur connecté
+ * @access  Privé (protégé par JWT)
+ * @Body    multipart/form-data (champ \"avatar\" : fichier image)
+ */
+authRouter.post(
+  '/profile/avatar',
+  protectRoute,
+  avatarUpload.single('avatar'),
+  authController.uploadAvatar
+);
 
 /**
  * @route   POST /api/v1/auth/forgot-password

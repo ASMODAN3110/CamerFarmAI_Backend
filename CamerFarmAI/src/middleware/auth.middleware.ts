@@ -12,11 +12,15 @@ declare global {
   }
 }
 
-// Clé secrète (à mettre dans .env plus tard)
-const JWT_SECRET = process.env.JWT_SECRET || 'ta_cle_super_secrete_256_bits_ici';
+// Clé secrète JWT (doit être définie dans les variables d'environnement)
+const JWT_SECRET: string = process.env.JWT_SECRET || '';
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET n\'est pas défini dans les variables d\'environnement');
+}
 
 interface JwtPayload {
-  id: string;
+  sub: string; // ID de l'utilisateur (standard JWT)
+  phone?: string;
   role: UserRole;
   iat?: number;
   exp?: number;
@@ -52,10 +56,19 @@ export const protectRoute = async (
     const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
 
     // 4. Récupérer l'utilisateur depuis la base
+    // Le token contient l'ID dans 'sub' (standard JWT)
+    const userId = decoded.sub;
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Token invalide : ID utilisateur manquant.',
+      });
+    }
+
     const userRepository = AppDataSource.getRepository(User);
     const currentUser = await userRepository.findOne({
-      where: { id: decoded.id },
-      select: ['id', 'phone', 'firstName', 'lastName', 'role'],
+      where: { id: userId },
+      select: ['id', 'phone', 'firstName', 'lastName', 'email', 'role', 'createdAt', 'updatedAt'],
     });
 
     if (!currentUser) {
@@ -101,13 +114,17 @@ export const optionalAuth = async (
 
     if (token) {
       const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
-      const userRepository = AppDataSource.getRepository(User);
-      const user = await userRepository.findOne({
-        where: { id: decoded.id },
-        select: ['id', 'phone', 'firstName', 'lastName', 'role'],
-      });
+      const userId = decoded.sub;
+      
+      if (userId) {
+        const userRepository = AppDataSource.getRepository(User);
+        const user = await userRepository.findOne({
+          where: { id: userId },
+          select: ['id', 'phone', 'firstName', 'lastName', 'email', 'role', 'createdAt', 'updatedAt'],
+        });
 
-      if (user) req.user = user;
+        if (user) req.user = user;
+      }
     }
   } catch (error) {
     // Silently fail – c'est optionnel
