@@ -27,15 +27,21 @@ Backend/
     ├── config/            # Configuration
     │   └── database.ts    # Configuration TypeORM
     ├── controllers/       # Contrôleurs HTTP
-    │   └── auth.controllers.ts
+    │   ├── auth.controllers.ts
+    │   └── plantation.controller.ts
     ├── middleware/        # Middlewares Express
     │   └── auth.middleware.ts
     ├── migrations/        # Migrations de base de données
-    │   └── 1700000000000-CreateUsersTable.ts
+    │   ├── 1700000000000-CreateUsersTable.ts
+    │   └── 1700000001000-SeedDemoData.ts
     ├── models/            # Entités TypeORM
-    │   └── User.entity.ts
+    │   ├── User.entity.ts
+    │   ├── Plantation.entity.ts
+    │   ├── SensorData.entity.ts
+    │   └── Actuator.entity.ts
     ├── routes/            # Définition des routes API
-    │   └── auth.routes.ts
+    │   ├── auth.routes.ts
+    │   └── plantation.routes.ts
     ├── services/          # Services métier
     │   └── auth.service.ts
     ├── types/             # Types TypeScript (DTOs)
@@ -53,7 +59,8 @@ Contient les fichiers de configuration de l'application :
 
 ### `/src/controllers`
 Contient les contrôleurs qui gèrent les requêtes HTTP :
-- `auth.controllers.ts` - Gestion de l'authentification (register, login, refresh, me, logout)
+- `auth.controllers.ts` - Authentification (register, login, refresh, profil…)
+- `plantation.controller.ts` - Gestion des plantations, capteurs et actionneurs
 
 ### `/src/middleware`
 Contient les middlewares Express personnalisés :
@@ -62,14 +69,19 @@ Contient les middlewares Express personnalisés :
 ### `/src/migrations`
 Contient les scripts de migration de base de données :
 - `1700000000000-CreateUsersTable.ts` - Création de la table users
+- `1700000001000-SeedDemoData.ts` - Jeu de données démo (3 agriculteurs, 6 plantations, capteurs, actionneurs)
 
 ### `/src/models`
 Contient les entités TypeORM :
-- `User.entity.ts` - Modèle utilisateur avec hashage automatique du mot de passe (bcrypt, 12 rounds) et enum `UserRole`
+- `User.entity.ts` - Utilisateur (hashage, rôles)
+- `Plantation.entity.ts` - Champs agricoles et relations capteurs/actionneurs
+- `SensorData.entity.ts` - Mesures capteurs (température, humidité, statut)
+- `Actuator.entity.ts` - Actionneurs (pompe, ventilateur, éclairage, statut)
 
 ### `/src/routes`
 Contient la définition des routes de l'API :
-- `auth.routes.ts` - Routes d'authentification avec validation
+- `auth.routes.ts` - Authentification avec validation
+- `plantation.routes.ts` - CRUD plantations + capteurs/actionneurs
 
 ### `/src/services`
 Contient la logique métier réutilisable :
@@ -120,6 +132,7 @@ Contient les utilitaires :
    ```bash
    npm run migration:run
    ```
+   > Ce script crée la table `users` (si besoin) puis exécute `1700000001000-SeedDemoData` qui ajoute des comptes et plantations de démonstration.
 5. **Lancer le serveur en développement**
    ```bash
    npm run dev
@@ -148,6 +161,26 @@ NODE_ENV=development
 FRONTEND_URL=http://localhost:5173
 ```
 
+## Jeu de données de démonstration
+
+La migration `1700000001000-SeedDemoData.ts` insère :
+
+| Utilisateur | Email | Mot de passe | Champs créés | Capteurs | Actionneurs |
+|-------------|-------|--------------|--------------|----------|-------------|
+| Alice Ndongo | `alice.farmer@example.com` | `Password!123` | 2 | 4 | 6 |
+| Bruno Mbia | `bruno.farmer@example.com` | `Password!123` | 2 | 4 | 6 |
+| Carole Essomba | `carole.farmer@example.com` | `Password!123` | 2 | 4 | 6 |
+
+Chaque plantation reçoit automatiquement :
+- 2 mesures capteurs (`temperature`, `humidity`, `soilMoisture`, `luminosity`, `status`)
+- 3 actionneurs (`pump`, `fan`, `light`) avec métadonnées
+
+Pour relancer le seed :
+```bash
+npm run migration:revert   # annule la dernière migration
+npm run migration:run      # recrée les données demo
+```
+
 ## Scripts disponibles
 
 ```bash
@@ -170,6 +203,67 @@ npm run migration:generate # Générer une nouvelle migration
 | PUT | `/profile` | Mettre à jour le profil utilisateur | Privé |
 | POST | `/profile/avatar` | Upload de l'avatar utilisateur (multipart/form-data) | Privé |
 | POST | `/logout` | Déconnexion | Privé |
+
+### Plantations & Monitoring (`/api/v1/plantations`)
+
+| Méthode | Endpoint | Description | Accès |
+|---------|----------|-------------|-------|
+| POST | `/` | Créer une plantation pour l'utilisateur connecté | Privé (FARMER) |
+| GET | `/my` | Lister les plantations de l'utilisateur | Privé (FARMER) |
+| GET | `/:id` | Détails d'une plantation + capteurs/actionneurs liés | Privé (FARMER propriétaire) |
+| PATCH | `/:id` | Mettre à jour une plantation | Privé (FARMER propriétaire) |
+| DELETE | `/:id` | Supprimer une plantation | Privé (FARMER propriétaire) |
+| POST | `/:id/sensors` | Ajouter une mesure capteur (température/humidité/etc.) | Privé (FARMER propriétaire) |
+| GET | `/:id/sensors` | Historique des capteurs pour le champ | Privé (FARMER propriétaire) |
+| POST | `/:id/actuators` | Ajouter un actionneur (pompe, ventilateur, éclairage, etc.) | Privé (FARMER propriétaire) |
+| GET | `/:id/actuators` | Lister les actionneurs du champ | Privé (FARMER propriétaire) |
+| PATCH | `/:id/actuators/:actuatorId` | Mettre à jour un actionneur | Privé (FARMER propriétaire) |
+| GET | `/` | Lister toutes les plantations (avec propriétaire) | Privé (TECHNICIAN, ADMIN) |
+
+#### Exemple : création d'une plantation
+```bash
+POST /api/v1/plantations
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "name": "Champ Bafoussam",
+  "location": "Bafoussam",
+  "area": 2.3,
+  "cropType": "cacao"
+}
+```
+
+#### Exemple : ajouter une mesure capteur
+```bash
+POST /api/v1/plantations/<plantationId>/sensors
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "temperature": 27.4,
+  "humidity": 63.5,
+  "soilMoisture": 41.2,
+  "luminosity": 780,
+  "status": "active"
+}
+```
+
+#### Exemple : ajouter un actionneur
+```bash
+POST /api/v1/plantations/<plantationId>/actuators
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "name": "Pompe de secours",
+  "type": "pump",
+  "status": "inactive",
+  "metadata": {
+    "power": "300W"
+  }
+}
+```
 
 ### Exemples de requêtes
 
@@ -476,6 +570,39 @@ Cette structure suit le pattern **MVC (Model-View-Controller)** adapté pour une
 | password | VARCHAR | Mot de passe hashé |
 | createdAt | TIMESTAMP | Date de création |
 | updatedAt | TIMESTAMP | Date de mise à jour |
+
+### Table `plantations`
+| Colonne | Type | Description |
+|---------|------|-------------|
+| id | UUID | Identifiant du champ |
+| ownerId | UUID | Référence vers `users.id` |
+| name | VARCHAR | Nom du champ |
+| location | VARCHAR | Localisation |
+| area | DECIMAL(10,2) | Superficie (ha) |
+| cropType | VARCHAR | Culture principale |
+| coordinates | JSONB | Coordonnées optionnelles |
+| createdAt / updatedAt | TIMESTAMP | Timestamps |
+
+### Table `sensor_data`
+| Colonne | Type | Description |
+|---------|------|-------------|
+| id | UUID | Identifiant de la mesure |
+| plantationId | UUID | Référence vers le champ |
+| temperature / humidity / soilMoisture | DECIMAL(5,2) | Mesures principales |
+| luminosity | DECIMAL(6,2) | Luminosité optionnelle |
+| status | ENUM | `active` ou `inactive` |
+| timestamp | TIMESTAMP | Date de la mesure |
+
+### Table `actuators`
+| Colonne | Type | Description |
+|---------|------|-------------|
+| id | UUID | Identifiant de l'actionneur |
+| plantationId | UUID | Référence vers le champ |
+| name | VARCHAR | Nom (Pompe principale, etc.) |
+| type | VARCHAR | Catégorie (`pump`, `fan`, `light`, …) |
+| status | ENUM | `active` / `inactive` |
+| metadata | JSONB | Informations complémentaires |
+| createdAt / updatedAt | TIMESTAMP | Timestamps |
 
 ### Enum UserRole
 

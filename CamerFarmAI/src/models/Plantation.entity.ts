@@ -1,6 +1,7 @@
 // src/models/Plantation.entity.ts
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { User } from './User.entity';
+import type { Actuator } from './Actuator.entity';
 
 export enum PlantationStatus {
   ACTIVE = 'active',
@@ -27,13 +28,6 @@ export class Plantation {
   @Column({ type: 'jsonb', nullable: true })
   coordinates?: { lat: number; lng: number }; // pour carte future
 
-  @Column({
-    type: 'enum',
-    enum: PlantationStatus,
-    default: PlantationStatus.ACTIVE,
-  })
-  status!: PlantationStatus;
-
   @ManyToOne(() => User, user => user.plantations)
   owner!: User;
 
@@ -42,6 +36,9 @@ export class Plantation {
 
   @OneToMany(() => require('./SensorData.entity').SensorData, (sensor: any) => sensor.plantation)
   sensorData!: any[];
+
+  @OneToMany(() => require('./Actuator.entity').Actuator, (actuator: Actuator) => actuator.plantation)
+  actuators!: Actuator[];
 
   @CreateDateColumn()
   createdAt!: Date;

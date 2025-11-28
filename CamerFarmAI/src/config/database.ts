@@ -1,4 +1,8 @@
 import { DataSource } from 'typeorm';
+import * as dotenv from 'dotenv';
+
+// Charger les variables d'environnement depuis .env
+dotenv.config();
 
 export const AppDataSource = new DataSource({
   type: 'postgres',

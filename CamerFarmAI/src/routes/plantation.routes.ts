@@ -15,6 +15,11 @@ router.get('/my', plantationController.getMyPlantations);
 router.get('/:id', plantationController.getOne);
 router.patch('/:id', plantationController.update);
 router.delete('/:id', plantationController.remove);
+router.post('/:id/sensors', plantationController.addSensorData);
+router.get('/:id/sensors', plantationController.getSensorData);
+router.post('/:id/actuators', plantationController.addActuator);
+router.get('/:id/actuators', plantationController.getActuators);
+router.patch('/:id/actuators/:actuatorId', plantationController.updateActuator);
 
 // Conseiller/admin peut tout voir
 router.get('/', restrictTo(UserRole.TECHNICIAN, UserRole.ADMIN), plantationController.getAll);
