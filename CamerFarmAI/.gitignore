@@ -13,7 +13,6 @@ coverage/
 src/**/*.js
 src/**/*.js.map
 src/**/*.d.ts
-src/migrations/*.js
 
 # Logs et rapports
 logs/
@@ -70,6 +69,7 @@ temp/
 
 # Uploads et sorties locales
 uploads/
+uploads/avatars/
 public/uploads/
 sessions/
 
@@ -79,3 +79,17 @@ docs/build/
 # Configurations locales sensibles
 config/local.json
 config/local.js
+
+# TypeORM
+ormconfig.json
+ormconfig.js
+ormconfig.*.json
+ormconfig.*.js
+
+# Fichiers de migration compilés
+src/migrations/*.js
+src/migrations/*.js.map
+
+# Fichiers de build TypeScript
+*.js.map
+*.d.ts

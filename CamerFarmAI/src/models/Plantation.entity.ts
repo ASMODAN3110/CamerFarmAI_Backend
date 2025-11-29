@@ -34,8 +34,8 @@ export class Plantation {
   @Column('uuid')
   ownerId!: string;
 
-  @OneToMany(() => require('./SensorData.entity').SensorData, (sensor: any) => sensor.plantation)
-  sensorData!: any[];
+  @OneToMany(() => require('./Sensor.entity').Sensor, (sensor: any) => sensor.plantation)
+  sensors!: any[];
 
   @OneToMany(() => require('./Actuator.entity').Actuator, (actuator: Actuator) => actuator.plantation)
   actuators!: Actuator[];
