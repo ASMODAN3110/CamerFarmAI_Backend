@@ -30,14 +30,15 @@ Backend/
     │   ├── auth.controllers.ts
     │   └── plantation.controller.ts
     ├── middleware/        # Middlewares Express
-    │   └── auth.middleware.ts
+    │   ├── auth.middleware.ts
+    │   └── upload.middleware.ts
     ├── migrations/        # Migrations de base de données
-    │   ├── 1700000000000-CreateUsersTable.ts
-    │   └── 1700000001000-SeedDemoData.ts
+    │   └── 1700000005000-SeedUserWithDevices.ts
     ├── models/            # Entités TypeORM
     │   ├── User.entity.ts
     │   ├── Plantation.entity.ts
-    │   ├── SensorData.entity.ts
+    │   ├── Sensor.entity.ts
+    │   ├── SensorReading.entity.ts
     │   └── Actuator.entity.ts
     ├── routes/            # Définition des routes API
     │   ├── auth.routes.ts
@@ -65,17 +66,18 @@ Contient les contrôleurs qui gèrent les requêtes HTTP :
 ### `/src/middleware`
 Contient les middlewares Express personnalisés :
 - `auth.middleware.ts` - Protection des routes, authentification JWT, gestion des rôles
+- `upload.middleware.ts` - Gestion des uploads de fichiers (avatars utilisateurs)
 
 ### `/src/migrations`
 Contient les scripts de migration de base de données :
-- `1700000000000-CreateUsersTable.ts` - Création de la table users
-- `1700000001000-SeedDemoData.ts` - Jeu de données démo (3 agriculteurs, 6 plantations, capteurs, actionneurs)
+- `1700000005000-SeedUserWithDevices.ts` - Création d'un utilisateur de test avec 1 plantation, 2 actionneurs et 1 capteur
 
 ### `/src/models`
 Contient les entités TypeORM :
 - `User.entity.ts` - Utilisateur (hashage, rôles)
 - `Plantation.entity.ts` - Champs agricoles et relations capteurs/actionneurs
-- `SensorData.entity.ts` - Mesures capteurs (température, humidité, statut)
+- `Sensor.entity.ts` - Capteurs physiques (type, statut) liés à une plantation
+- `SensorReading.entity.ts` - Lectures de capteurs (valeurs mesurées) liées à un capteur
 - `Actuator.entity.ts` - Actionneurs (pompe, ventilateur, éclairage, statut)
 
 ### `/src/routes`
@@ -132,7 +134,7 @@ Contient les utilitaires :
    ```bash
    npm run migration:run
    ```
-   > Ce script crée la table `users` (si besoin) puis exécute `1700000001000-SeedDemoData` qui ajoute des comptes et plantations de démonstration.
+   > Ce script exécute les migrations disponibles, notamment `1700000005000-SeedUserWithDevices` qui crée un utilisateur de test avec une plantation, des capteurs et des actionneurs.
 5. **Lancer le serveur en développement**
    ```bash
    npm run dev
@@ -163,22 +165,29 @@ FRONTEND_URL=http://localhost:5173
 
 ## Jeu de données de démonstration
 
-La migration `1700000001000-SeedDemoData.ts` insère :
+### Migration `1700000005000-SeedUserWithDevices.ts`
 
-| Utilisateur | Email | Mot de passe | Champs créés | Capteurs | Actionneurs |
-|-------------|-------|--------------|--------------|----------|-------------|
-| Alice Ndongo | `alice.farmer@example.com` | `Password!123` | 2 | 4 | 6 |
-| Bruno Mbia | `bruno.farmer@example.com` | `Password!123` | 2 | 4 | 6 |
-| Carole Essomba | `carole.farmer@example.com` | `Password!123` | 2 | 4 | 6 |
+Cette migration crée un utilisateur de test avec :
+- **1 utilisateur** : Test User (`test.user@example.com`, mot de passe: `Password!123`)
+- **1 plantation** : "Champ de test" à Douala
+- **2 actionneurs** : 
+  - Pompe principale (type: `pump`, status: `active`)
+  - Ventilateur nord (type: `fan`, status: `active`)
+- **1 capteur** : Capteur de température (type: `temperature`, status: `active`)
 
-Chaque plantation reçoit automatiquement :
-- 2 mesures capteurs (`temperature`, `humidity`, `soilMoisture`, `luminosity`, `status`)
-- 3 actionneurs (`pump`, `fan`, `light`) avec métadonnées
+**Identifiants de connexion :**
+- Email : `test.user@example.com`
+- Téléphone : `690123456`
+- Mot de passe : `Password!123`
 
-Pour relancer le seed :
+Pour exécuter cette migration :
 ```bash
-npm run migration:revert   # annule la dernière migration
-npm run migration:run      # recrée les données demo
+npm run migration:run
+```
+
+Pour annuler cette migration :
+```bash
+npm run migration:revert
 ```
 
 ## Scripts disponibles
@@ -213,19 +222,263 @@ npm run migration:generate # Générer une nouvelle migration
 | GET | `/:id` | Détails d'une plantation + capteurs/actionneurs liés | Privé (FARMER propriétaire) |
 | PATCH | `/:id` | Mettre à jour une plantation | Privé (FARMER propriétaire) |
 | DELETE | `/:id` | Supprimer une plantation | Privé (FARMER propriétaire) |
-| POST | `/:id/sensors` | Ajouter une mesure capteur (température/humidité/etc.) | Privé (FARMER propriétaire) |
-| GET | `/:id/sensors` | Historique des capteurs pour le champ | Privé (FARMER propriétaire) |
+| POST | `/:id/sensors` | Créer un capteur pour la plantation | Privé (FARMER propriétaire) |
+| GET | `/:id/sensors` | Lister les capteurs de la plantation | Privé (FARMER propriétaire) |
+| PATCH | `/:id/sensors/:sensorId` | Mettre à jour un capteur (statut) | Privé (FARMER propriétaire) |
+| POST | `/:id/sensors/:sensorId/readings` | Ajouter une lecture à un capteur | Privé (FARMER propriétaire) |
+| GET | `/:id/sensors/:sensorId/readings` | Obtenir les lectures d'un capteur | Privé (FARMER propriétaire) |
 | POST | `/:id/actuators` | Ajouter un actionneur (pompe, ventilateur, éclairage, etc.) | Privé (FARMER propriétaire) |
 | GET | `/:id/actuators` | Lister les actionneurs du champ | Privé (FARMER propriétaire) |
 | PATCH | `/:id/actuators/:actuatorId` | Mettre à jour un actionneur | Privé (FARMER propriétaire) |
 | GET | `/` | Lister toutes les plantations (avec propriétaire) | Privé (TECHNICIAN, ADMIN) |
 
-#### Exemple : création d'une plantation
-```bash
-POST /api/v1/plantations
-Authorization: Bearer <access_token>
-Content-Type: application/json
+## Guide complet des API - Test avec Postman
 
+### Configuration Postman
+
+1. **Créer un environnement Postman** :
+   - Variable `base_url` : `http://localhost:3000/api/v1`
+   - Variable `accessToken` : (sera remplie après login)
+
+2. **Collection Postman** : Créer une collection "CamerFarmAI API"
+
+---
+
+## Routes d'authentification (`/api/v1/auth`)
+
+### 1. POST `/api/v1/auth/register` - Inscription
+
+**Configuration Postman :**
+- **Method** : `POST`
+- **URL** : `{{base_url}}/auth/register`
+- **Headers** : `Content-Type: application/json`
+- **Body** (raw JSON) :
+```json
+{
+  "phone": "690123456",
+  "password": "Password!123",
+  "firstName": "Jean",
+  "lastName": "Dupont",
+  "email": "jean.dupont@example.com"
+}
+```
+
+**Réponse 201 Created :**
+```json
+{
+  "success": true,
+  "message": "Inscription réussie",
+  "data": {
+    "user": {
+      "id": "uuid",
+      "phone": "690123456",
+      "firstName": "Jean",
+      "lastName": "Dupont",
+      "role": "farmer"
+    },
+    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  }
+}
+```
+
+**Erreur 400 Bad Request :**
+```json
+{
+  "success": false,
+  "message": "Données invalides",
+  "errors": [
+    {
+      "msg": "Le numéro de téléphone est requis",
+      "param": "phone"
+    }
+  ]
+}
+```
+
+---
+
+### 2. POST `/api/v1/auth/login` - Connexion
+
+**Configuration Postman :**
+- **Method** : `POST`
+- **URL** : `{{base_url}}/auth/login`
+- **Headers** : `Content-Type: application/json`
+- **Body** (raw JSON) :
+```json
+{
+  "email": "bruno.farmer@example.com",
+  "password": "Password!123"
+}
+```
+
+**Réponse 200 OK :**
+```json
+{
+  "success": true,
+  "message": "Connexion réussie",
+  "data": {
+    "user": {
+      "id": "uuid",
+      "phone": "690000003",
+      "email": "bruno.farmer@example.com",
+      "firstName": "Pierre",
+      "lastName": "Agriculteur",
+      "role": "farmer",
+      "createdAt": "2025-11-28T08:00:00.000Z",
+      "updatedAt": "2025-11-28T08:00:00.000Z"
+    },
+    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  }
+}
+```
+
+**⚠️ Important** : Copier le `accessToken` et l'ajouter dans la variable d'environnement Postman `accessToken` pour les requêtes suivantes.
+
+**Erreur 401 Unauthorized :**
+```json
+{
+  "success": false,
+  "message": "Identifiants invalides"
+}
+```
+
+---
+
+### 3. POST `/api/v1/auth/refresh` - Rafraîchir le token
+
+**Configuration Postman :**
+- **Method** : `POST`
+- **URL** : `{{base_url}}/auth/refresh`
+- **Headers** : Aucun (utilise le cookie `refreshToken`)
+
+**Réponse 200 OK :**
+```json
+{
+  "success": true,
+  "data": {
+    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  }
+}
+```
+
+---
+
+### 4. GET `/api/v1/auth/me` - Profil utilisateur
+
+**Configuration Postman :**
+- **Method** : `GET`
+- **URL** : `{{base_url}}/auth/me`
+- **Headers** : `Authorization: Bearer {{accessToken}}`
+
+**Réponse 200 OK :**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "uuid",
+    "phone": "690000003",
+    "email": "bruno.farmer@example.com",
+    "firstName": "Pierre",
+    "lastName": "Agriculteur",
+    "role": "farmer",
+    "createdAt": "2025-11-28T08:00:00.000Z",
+    "updatedAt": "2025-11-28T08:00:00.000Z"
+  }
+}
+```
+
+---
+
+### 5. PUT `/api/v1/auth/profile` - Mettre à jour le profil
+
+**Configuration Postman :**
+- **Method** : `PUT`
+- **URL** : `{{base_url}}/auth/profile`
+- **Headers** : 
+  - `Authorization: Bearer {{accessToken}}`
+  - `Content-Type: application/json`
+- **Body** (raw JSON) :
+```json
+{
+  "firstName": "Pierre",
+  "lastName": "Agriculteur Modifié",
+  "email": "nouveau.email@example.com",
+  "phone": "690999999"
+}
+```
+
+**Réponse 200 OK :**
+```json
+{
+  "success": true,
+  "message": "Profil mis à jour avec succès",
+  "data": {
+    "id": "uuid",
+    "phone": "690999999",
+    "email": "nouveau.email@example.com",
+    "firstName": "Pierre",
+    "lastName": "Agriculteur Modifié",
+    "role": "farmer"
+  }
+}
+```
+
+---
+
+### 6. POST `/api/v1/auth/profile/avatar` - Upload avatar
+
+**Configuration Postman :**
+- **Method** : `POST`
+- **URL** : `{{base_url}}/auth/profile/avatar`
+- **Headers** : `Authorization: Bearer {{accessToken}}`
+- **Body** : `form-data`
+  - Clé : `avatar` (type: File)
+  - Valeur : Sélectionner un fichier image
+
+**Réponse 200 OK :**
+```json
+{
+  "success": true,
+  "message": "Avatar uploadé avec succès",
+  "data": {
+    "avatarUrl": "/uploads/avatars/uuid-timestamp-filename.jpg"
+  }
+}
+```
+
+---
+
+### 7. POST `/api/v1/auth/logout` - Déconnexion
+
+**Configuration Postman :**
+- **Method** : `POST`
+- **URL** : `{{base_url}}/auth/logout`
+- **Headers** : `Authorization: Bearer {{accessToken}}`
+
+**Réponse 200 OK :**
+```json
+{
+  "success": true,
+  "message": "Déconnexion réussie"
+}
+```
+
+---
+
+## Routes de plantations (`/api/v1/plantations`)
+
+**⚠️ Toutes les routes nécessitent** : `Authorization: Bearer {{accessToken}}`
+
+### 8. POST `/api/v1/plantations` - Créer une plantation
+
+**Configuration Postman :**
+- **Method** : `POST`
+- **URL** : `{{base_url}}/plantations`
+- **Headers** : 
+  - `Authorization: Bearer {{accessToken}}`
+  - `Content-Type: application/json`
+- **Body** (raw JSON) :
+```json
 {
   "name": "Champ Bafoussam",
   "location": "Bafoussam",
@@ -234,20 +487,572 @@ Content-Type: application/json
 }
 ```
 
-#### Exemple : ajouter une mesure capteur
-```bash
-POST /api/v1/plantations/<plantationId>/sensors
-Authorization: Bearer <access_token>
-Content-Type: application/json
-
+**Réponse 201 Created :**
+```json
 {
-  "temperature": 27.4,
-  "humidity": 63.5,
-  "soilMoisture": 41.2,
-  "luminosity": 780,
+  "id": "uuid",
+  "name": "Champ Bafoussam",
+  "location": "Bafoussam",
+  "area": 2.3,
+  "createdAt": "2025-11-28T10:00:00.000Z",
+  "cropType": "cacao",
+  "ownerId": "uuid",
+  "updatedAt": "2025-11-28T10:00:00.000Z"
+}
+```
+
+**Note** : 5 capteurs (un de chaque type) et 3 actionneurs sont créés automatiquement.
+
+---
+
+### 9. GET `/api/v1/plantations/my` - Mes plantations
+
+**Configuration Postman :**
+- **Method** : `GET`
+- **URL** : `{{base_url}}/plantations/my`
+- **Headers** : `Authorization: Bearer {{accessToken}}`
+
+**Réponse 200 OK :**
+```json
+[
+  {
+    "id": "uuid",
+    "name": "Champ Bafoussam",
+    "location": "Bafoussam",
+    "area": 2.3,
+    "createdAt": "2025-11-28T10:00:00.000Z",
+    "cropType": "cacao",
+    "ownerId": "uuid",
+    "updatedAt": "2025-11-28T10:00:00.000Z"
+  }
+]
+```
+
+---
+
+### 10. GET `/api/v1/plantations/:id` - Détails d'une plantation
+
+**Configuration Postman :**
+- **Method** : `GET`
+- **URL** : `{{base_url}}/plantations/{{plantationId}}`
+- **Headers** : `Authorization: Bearer {{accessToken}}`
+
+**Réponse 200 OK :**
+```json
+{
+  "id": "uuid",
+  "name": "Champ Bafoussam",
+  "location": "Bafoussam",
+  "area": 2.3,
+  "createdAt": "2025-11-28T10:00:00.000Z",
+  "cropType": "cacao",
+  "ownerId": "uuid",
+  "updatedAt": "2025-11-28T10:00:00.000Z",
+  "sensors": [
+    {
+      "id": "uuid",
+      "type": "temperature",
+      "status": "active",
+      "plantationId": "uuid",
+      "createdAt": "2025-11-28T10:00:00.000Z",
+      "updatedAt": "2025-11-28T10:00:00.000Z"
+    },
+    {
+      "id": "uuid",
+      "type": "soilMoisture",
+      "status": "active",
+      "plantationId": "uuid",
+      "createdAt": "2025-11-28T10:00:00.000Z",
+      "updatedAt": "2025-11-28T10:00:00.000Z"
+    }
+  ],
+  "actuators": [
+    {
+      "id": "uuid",
+      "name": "Pompe principale",
+      "type": "pump",
+      "status": "active",
+      "metadata": {
+        "flowRate": "25L/min",
+        "power": "300W"
+      },
+      "plantationId": "uuid",
+      "createdAt": "2025-11-28T10:00:00.000Z",
+      "updatedAt": "2025-11-28T10:00:00.000Z"
+    }
+  ],
+  "latestReadings": [
+    {
+      "sensorId": "uuid",
+      "sensorType": "temperature",
+      "latestReading": {
+        "value": 27.5,
+        "timestamp": "2025-11-28T11:00:00.000Z"
+      }
+    }
+  ],
+  "hasSensors": true,
+  "hasActuators": true
+}
+```
+
+**Erreur 404 Not Found :**
+```json
+{
+  "message": "Champ non trouvé"
+}
+```
+
+---
+
+### 11. PATCH `/api/v1/plantations/:id` - Mettre à jour une plantation
+
+**Configuration Postman :**
+- **Method** : `PATCH`
+- **URL** : `{{base_url}}/plantations/{{plantationId}}`
+- **Headers** : 
+  - `Authorization: Bearer {{accessToken}}`
+  - `Content-Type: application/json`
+- **Body** (raw JSON) :
+```json
+{
+  "name": "Champ Bafoussam Modifié",
+  "location": "Bafoussam Centre",
+  "area": 3.0
+}
+```
+
+**Réponse 200 OK :**
+```json
+{
+  "id": "uuid",
+  "name": "Champ Bafoussam Modifié",
+  "location": "Bafoussam Centre",
+  "area": 3.0,
+  "createdAt": "2025-11-28T10:00:00.000Z",
+  "cropType": "cacao",
+  "ownerId": "uuid",
+  "updatedAt": "2025-11-28T10:30:00.000Z"
+}
+```
+
+---
+
+### 12. DELETE `/api/v1/plantations/:id` - Supprimer une plantation
+
+**Configuration Postman :**
+- **Method** : `DELETE`
+- **URL** : `{{base_url}}/plantations/{{plantationId}}`
+- **Headers** : `Authorization: Bearer {{accessToken}}`
+
+**Réponse 204 No Content** (pas de body)
+
+---
+
+## Routes de capteurs (`/api/v1/plantations/:id/sensors`)
+
+### 13. POST `/api/v1/plantations/:id/sensors` - Créer un capteur
+
+**Configuration Postman :**
+- **Method** : `POST`
+- **URL** : `{{base_url}}/plantations/{{plantationId}}/sensors`
+- **Headers** : 
+  - `Authorization: Bearer {{accessToken}}`
+  - `Content-Type: application/json`
+- **Body** (raw JSON) :
+```json
+{
+  "type": "temperature",
   "status": "active"
 }
 ```
+
+**Types valides** : `temperature`, `soilMoisture`, `co2Level`, `waterLevel`, `luminosity`
+
+**Réponse 201 Created :**
+```json
+{
+  "id": "uuid",
+  "type": "temperature",
+  "status": "active",
+  "plantationId": "uuid",
+  "createdAt": "2025-11-28T10:00:00.000Z",
+  "updatedAt": "2025-11-28T10:00:00.000Z"
+}
+```
+
+**Erreur 400 Bad Request :**
+```json
+{
+  "message": "Le champ type est obligatoire pour un capteur."
+}
+```
+
+---
+
+### 14. GET `/api/v1/plantations/:id/sensors` - Lister les capteurs
+
+**Configuration Postman :**
+- **Method** : `GET`
+- **URL** : `{{base_url}}/plantations/{{plantationId}}/sensors`
+- **Headers** : `Authorization: Bearer {{accessToken}}`
+
+**Réponse 200 OK :**
+```json
+[
+  {
+    "id": "uuid",
+    "type": "temperature",
+    "status": "active",
+    "plantationId": "uuid",
+    "createdAt": "2025-11-28T10:00:00.000Z",
+    "updatedAt": "2025-11-28T10:00:00.000Z"
+  },
+  {
+    "id": "uuid",
+    "type": "soilMoisture",
+    "status": "active",
+    "plantationId": "uuid",
+    "createdAt": "2025-11-28T10:00:00.000Z",
+    "updatedAt": "2025-11-28T10:00:00.000Z"
+  },
+  {
+    "id": "uuid",
+    "type": "co2Level",
+    "status": "active",
+    "plantationId": "uuid",
+    "createdAt": "2025-11-28T10:00:00.000Z",
+    "updatedAt": "2025-11-28T10:00:00.000Z"
+  },
+  {
+    "id": "uuid",
+    "type": "waterLevel",
+    "status": "active",
+    "plantationId": "uuid",
+    "createdAt": "2025-11-28T10:00:00.000Z",
+    "updatedAt": "2025-11-28T10:00:00.000Z"
+  },
+  {
+    "id": "uuid",
+    "type": "luminosity",
+    "status": "active",
+    "plantationId": "uuid",
+    "createdAt": "2025-11-28T10:00:00.000Z",
+    "updatedAt": "2025-11-28T10:00:00.000Z"
+  }
+]
+```
+
+---
+
+### 15. PATCH `/api/v1/plantations/:id/sensors/:sensorId` - Mettre à jour un capteur
+
+**Configuration Postman :**
+- **Method** : `PATCH`
+- **URL** : `{{base_url}}/plantations/{{plantationId}}/sensors/{{sensorId}}`
+- **Headers** : 
+  - `Authorization: Bearer {{accessToken}}`
+  - `Content-Type: application/json`
+- **Body** (raw JSON) :
+```json
+{
+  "status": "inactive"
+}
+```
+
+**Réponse 200 OK :**
+```json
+{
+  "id": "uuid",
+  "type": "temperature",
+  "status": "inactive",
+  "plantationId": "uuid",
+  "createdAt": "2025-11-28T10:00:00.000Z",
+  "updatedAt": "2025-11-28T10:30:00.000Z"
+}
+```
+
+---
+
+## Routes de lectures de capteurs (`/api/v1/plantations/:id/sensors/:sensorId/readings`)
+
+### 16. POST `/api/v1/plantations/:id/sensors/:sensorId/readings` - Ajouter une lecture
+
+**Configuration Postman :**
+- **Method** : `POST`
+- **URL** : `{{base_url}}/plantations/{{plantationId}}/sensors/{{sensorId}}/readings`
+- **Headers** : 
+  - `Authorization: Bearer {{accessToken}}`
+  - `Content-Type: application/json`
+- **Body** (raw JSON) :
+```json
+{
+  "value": 27.5
+}
+```
+
+**Réponse 201 Created :**
+```json
+{
+  "id": "uuid",
+  "value": 27.5,
+  "sensorId": "uuid",
+  "timestamp": "2025-11-28T11:00:00.000Z"
+}
+```
+
+**Erreur 400 Bad Request :**
+```json
+{
+  "message": "Le champ value est obligatoire et doit être numérique."
+}
+```
+
+---
+
+### 17. GET `/api/v1/plantations/:id/sensors/:sensorId/readings` - Obtenir les lectures
+
+**Configuration Postman :**
+- **Method** : `GET`
+- **URL** : `{{base_url}}/plantations/{{plantationId}}/sensors/{{sensorId}}/readings`
+- **Headers** : `Authorization: Bearer {{accessToken}}`
+
+**Réponse 200 OK :**
+```json
+{
+  "sensor": {
+    "id": "uuid",
+    "type": "temperature",
+    "status": "active"
+  },
+  "readings": [
+    {
+      "id": "uuid",
+      "value": 27.5,
+      "sensorId": "uuid",
+      "timestamp": "2025-11-28T11:00:00.000Z"
+    },
+    {
+      "id": "uuid",
+      "value": 26.8,
+      "sensorId": "uuid",
+      "timestamp": "2025-11-28T10:30:00.000Z"
+    },
+    {
+      "id": "uuid",
+      "value": 28.2,
+      "sensorId": "uuid",
+      "timestamp": "2025-11-28T10:00:00.000Z"
+    }
+  ]
+}
+```
+
+**Note** : Retourne les 100 dernières lectures, triées par timestamp décroissant.
+
+---
+
+## Routes d'actionneurs (`/api/v1/plantations/:id/actuators`)
+
+### 18. POST `/api/v1/plantations/:id/actuators` - Créer un actionneur
+
+**Configuration Postman :**
+- **Method** : `POST`
+- **URL** : `{{base_url}}/plantations/{{plantationId}}/actuators`
+- **Headers** : 
+  - `Authorization: Bearer {{accessToken}}`
+  - `Content-Type: application/json`
+- **Body** (raw JSON) :
+```json
+{
+  "name": "Pompe de secours",
+  "type": "pump",
+  "status": "active",
+  "metadata": {
+    "flowRate": "30L/min",
+    "power": "350W"
+  }
+}
+```
+
+**Types valides** : `pump`, `fan`, `light`
+
+**Réponse 201 Created :**
+```json
+{
+  "id": "uuid",
+  "name": "Pompe de secours",
+  "type": "pump",
+  "status": "active",
+  "metadata": {
+    "flowRate": "30L/min",
+    "power": "350W"
+  },
+  "plantationId": "uuid",
+  "createdAt": "2025-11-28T10:00:00.000Z",
+  "updatedAt": "2025-11-28T10:00:00.000Z"
+}
+```
+
+---
+
+### 19. GET `/api/v1/plantations/:id/actuators` - Lister les actionneurs
+
+**Configuration Postman :**
+- **Method** : `GET`
+- **URL** : `{{base_url}}/plantations/{{plantationId}}/actuators`
+- **Headers** : `Authorization: Bearer {{accessToken}}`
+
+**Réponse 200 OK :**
+```json
+[
+  {
+    "id": "uuid",
+    "name": "Pompe principale",
+    "type": "pump",
+    "status": "active",
+    "metadata": {
+      "flowRate": "25L/min",
+      "power": "300W"
+    },
+    "plantationId": "uuid",
+    "createdAt": "2025-11-28T10:00:00.000Z",
+    "updatedAt": "2025-11-28T10:00:00.000Z"
+  },
+  {
+    "id": "uuid",
+    "name": "Ventilateur nord",
+    "type": "fan",
+    "status": "inactive",
+    "metadata": {
+      "speedLevels": 3,
+      "power": "150W"
+    },
+    "plantationId": "uuid",
+    "createdAt": "2025-11-28T10:00:00.000Z",
+    "updatedAt": "2025-11-28T10:00:00.000Z"
+  },
+  {
+    "id": "uuid",
+    "name": "Éclairage LED",
+    "type": "light",
+    "status": "active",
+    "metadata": {
+      "spectrum": "full",
+      "power": "100W"
+    },
+    "plantationId": "uuid",
+    "createdAt": "2025-11-28T10:00:00.000Z",
+    "updatedAt": "2025-11-28T10:00:00.000Z"
+  }
+]
+```
+
+---
+
+### 20. PATCH `/api/v1/plantations/:id/actuators/:actuatorId` - Mettre à jour un actionneur
+
+**Configuration Postman :**
+- **Method** : `PATCH`
+- **URL** : `{{base_url}}/plantations/{{plantationId}}/actuators/{{actuatorId}}`
+- **Headers** : 
+  - `Authorization: Bearer {{accessToken}}`
+  - `Content-Type: application/json`
+- **Body** (raw JSON) :
+```json
+{
+  "status": "active",
+  "metadata": {
+    "flowRate": "35L/min",
+    "power": "400W"
+  }
+}
+```
+
+**Réponse 200 OK :**
+```json
+{
+  "id": "uuid",
+  "name": "Pompe principale",
+  "type": "pump",
+  "status": "active",
+  "metadata": {
+    "flowRate": "35L/min",
+    "power": "400W"
+  },
+  "plantationId": "uuid",
+  "createdAt": "2025-11-28T10:00:00.000Z",
+  "updatedAt": "2025-11-28T10:30:00.000Z"
+}
+```
+
+---
+
+## Routes administrateur/technicien (`/api/v1/plantations`)
+
+### 21. GET `/api/v1/plantations` - Lister toutes les plantations
+
+**Configuration Postman :**
+- **Method** : `GET`
+- **URL** : `{{base_url}}/plantations`
+- **Headers** : `Authorization: Bearer {{accessToken}}`
+- **⚠️ Accès** : Uniquement TECHNICIAN ou ADMIN
+
+**Réponse 200 OK :**
+```json
+[
+  {
+    "id": "uuid",
+    "name": "Champ Bafoussam",
+    "location": "Bafoussam",
+    "area": 2.3,
+    "createdAt": "2025-11-28T10:00:00.000Z",
+    "cropType": "cacao",
+    "ownerId": "uuid",
+    "updatedAt": "2025-11-28T10:00:00.000Z"
+  }
+]
+```
+
+**Erreur 403 Forbidden** (si pas admin/technicien) :
+```json
+{
+  "message": "Vous n'avez pas la permission d'accéder à cette ressource"
+}
+```
+
+---
+
+## Codes de statut HTTP
+
+| Code | Signification |
+|------|---------------|
+| 200 | Succès - Requête traitée avec succès |
+| 201 | Créé - Ressource créée avec succès |
+| 204 | Pas de contenu - Suppression réussie |
+| 400 | Requête invalide - Données manquantes ou invalides |
+| 401 | Non autorisé - Token manquant ou invalide |
+| 403 | Interdit - Permissions insuffisantes |
+| 404 | Non trouvé - Ressource introuvable |
+| 409 | Conflit - Ressource déjà existante (ex: email/phone déjà utilisé) |
+| 500 | Erreur serveur - Erreur interne |
+
+---
+
+## Astuces Postman
+
+1. **Variables d'environnement** : Utiliser `{{base_url}}` et `{{accessToken}}` pour éviter de répéter les valeurs
+2. **Tests automatiques** : Ajouter des scripts dans l'onglet "Tests" pour extraire automatiquement le token :
+```javascript
+if (pm.response.code === 200) {
+  const jsonData = pm.response.json();
+  if (jsonData.data && jsonData.data.accessToken) {
+    pm.environment.set("accessToken", jsonData.data.accessToken);
+  }
+}
+```
+3. **Collection Runner** : Exécuter toutes les requêtes d'une collection en séquence
+4. **Pré-requis** : Créer un dossier "Auth" dans la collection avec les requêtes d'authentification en premier
 
 #### Exemple : ajouter un actionneur
 ```bash
@@ -583,14 +1388,21 @@ Cette structure suit le pattern **MVC (Model-View-Controller)** adapté pour une
 | coordinates | JSONB | Coordonnées optionnelles |
 | createdAt / updatedAt | TIMESTAMP | Timestamps |
 
-### Table `sensor_data`
+### Table `sensors`
 | Colonne | Type | Description |
 |---------|------|-------------|
-| id | UUID | Identifiant de la mesure |
-| plantationId | UUID | Référence vers le champ |
-| temperature / humidity / soilMoisture | DECIMAL(5,2) | Mesures principales |
-| luminosity | DECIMAL(6,2) | Luminosité optionnelle |
+| id | UUID | Identifiant du capteur |
+| type | ENUM | Type de capteur : `temperature`, `soilMoisture`, `co2Level`, `waterLevel`, `luminosity` |
 | status | ENUM | `active` ou `inactive` |
+| plantationId | UUID | Référence vers le champ |
+| createdAt / updatedAt | TIMESTAMP | Timestamps |
+
+### Table `sensor_readings`
+| Colonne | Type | Description |
+|---------|------|-------------|
+| id | UUID | Identifiant de la lecture |
+| value | DECIMAL(10,2) | Valeur mesurée |
+| sensorId | UUID | Référence vers le capteur |
 | timestamp | TIMESTAMP | Date de la mesure |
 
 ### Table `actuators`
