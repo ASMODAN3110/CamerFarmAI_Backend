@@ -71,6 +71,7 @@ Contient les middlewares Express personnalisés :
 ### `/src/migrations`
 Contient les scripts de migration de base de données :
 - `1700000005000-SeedUserWithDevices.ts` - Création d'un utilisateur de test avec 1 plantation, 2 actionneurs et 1 capteur
+- `1700000006000-AddNewPlantationWithSensors.ts` - Ajout d'un nouveau champ à l'utilisateur de test avec 2 capteurs et 3 actionneurs
 
 ### `/src/models`
 Contient les entités TypeORM :
@@ -180,12 +181,26 @@ Cette migration crée un utilisateur de test avec :
 - Téléphone : `690123456`
 - Mot de passe : `Password!123`
 
-Pour exécuter cette migration :
+### Migration `1700000006000-AddNewPlantationWithSensors.ts`
+
+Cette migration ajoute un nouveau champ à l'utilisateur `test.user@example.com` avec :
+- **1 nouvelle plantation** : "Nouveau Champ de Test" à Yaoundé (3.0 ha, cacao)
+- **2 capteurs** :
+  - Capteur de température (type: `temperature`, status: `active`)
+  - Capteur d'humidité du sol (type: `soilMoisture`, status: `active`)
+- **3 actionneurs** (créés automatiquement) :
+  - Pompe principale (type: `pump`, status: `active`)
+  - Ventilateur nord (type: `fan`, status: `inactive`)
+  - Éclairage LED (type: `light`, status: `active`)
+
+**Note** : Cette migration nécessite que la migration `1700000005000-SeedUserWithDevices.ts` ait été exécutée au préalable.
+
+Pour exécuter toutes les migrations :
 ```bash
 npm run migration:run
 ```
 
-Pour annuler cette migration :
+Pour annuler la dernière migration :
 ```bash
 npm run migration:revert
 ```
