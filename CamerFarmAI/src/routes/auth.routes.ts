@@ -15,8 +15,16 @@ const validateRegister = [
     .isMobilePhone('any')
     .withMessage('Le numéro de téléphone doit être valide'),
   body('password')
-    .isLength({ min: 6 })
-    .withMessage('Le mot de passe doit contenir au moins 6 caractères'),
+    .isLength({ min: 8 })
+    .withMessage('Le mot de passe doit contenir au moins 8 caractères')
+    .matches(/[A-Z]/)
+    .withMessage('Le mot de passe doit contenir au moins une lettre majuscule')
+    .matches(/[a-z]/)
+    .withMessage('Le mot de passe doit contenir au moins une lettre minuscule')
+    .matches(/[0-9]/)
+    .withMessage('Le mot de passe doit contenir au moins un nombre')
+    .matches(/[!@#$%^&*(),.?":{}|<>]/)
+    .withMessage('Le mot de passe doit contenir au moins un caractère spécial'),
   body('firstName')
     .optional()
     .isString()

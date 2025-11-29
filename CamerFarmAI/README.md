@@ -72,6 +72,8 @@ Contient les middlewares Express personnalisés :
 Contient les scripts de migration de base de données :
 - `1700000005000-SeedUserWithDevices.ts` - Création d'un utilisateur de test avec 1 plantation, 2 actionneurs et 1 capteur
 - `1700000006000-AddNewPlantationWithSensors.ts` - Ajout d'un nouveau champ à l'utilisateur de test avec 2 capteurs et 3 actionneurs
+- `1700000007000-AddSensorToNewPlantation.ts` - Ajout d'un capteur supplémentaire à la plantation "Nouveau Champ de Test"
+- `1700000008000-SeedSensorReadings.ts` - Ajout de lectures de capteurs (24 lectures par capteur) pour les plantations "Champ de test" et "Nouveau Champ de Test"
 
 ### `/src/models`
 Contient les entités TypeORM :
@@ -111,7 +113,7 @@ Contient les utilitaires :
 - **JWT (jsonwebtoken)** - Tokens d'authentification (access token + refresh token)
 - **bcrypt** - Hashage des mots de passe (12 rounds)
 - **Helmet** - Sécurisation des en-têtes HTTP
-- **express-validator** - Validation des données d'entrée
+- **express-validator** - Validation des données d'entrée (validation stricte des mots de passe)
 - **cookie-parser** - Gestion des cookies HTTP (pour les refresh tokens)
 
 ### Outils de développement
@@ -194,6 +196,26 @@ Cette migration ajoute un nouveau champ à l'utilisateur `test.user@example.com`
   - Éclairage LED (type: `light`, status: `active`)
 
 **Note** : Cette migration nécessite que la migration `1700000005000-SeedUserWithDevices.ts` ait été exécutée au préalable.
+
+### Migration `1700000007000-AddSensorToNewPlantation.ts`
+
+Cette migration ajoute un capteur supplémentaire à la plantation "Nouveau Champ de Test" :
+- **1 nouveau capteur** : Capteur de CO2 (type: `co2Level`, status: `active`) ou le premier type disponible qui n'existe pas encore
+
+**Note** : Cette migration nécessite que la migration `1700000006000-AddNewPlantationWithSensors.ts` ait été exécutée au préalable.
+
+### Migration `1700000008000-SeedSensorReadings.ts`
+
+Cette migration ajoute des lectures de capteurs pour les plantations "Champ de test" et "Nouveau Champ de Test" :
+- **24 lectures par capteur** : Une lecture par heure sur les dernières 24 heures
+- **Valeurs réalistes** : Générées selon le type de capteur avec variations temporelles
+  - Température : 22-32°C
+  - Humidité du sol : 40-70%
+  - CO2 : 400-800 ppm
+  - Niveau d'eau : 60-90%
+  - Luminosité : 150-800 lux (simulation jour/nuit)
+
+**Note** : Cette migration nécessite que les migrations précédentes aient été exécutées au préalable.
 
 Pour exécuter toutes les migrations :
 ```bash
@@ -305,6 +327,35 @@ npm run migration:generate # Générer une nouvelle migration
     {
       "msg": "Le numéro de téléphone est requis",
       "param": "phone"
+    }
+  ]
+}
+```
+
+**Règles de validation du mot de passe :**
+- Minimum 8 caractères
+- Au moins une lettre majuscule (A-Z)
+- Au moins une lettre minuscule (a-z)
+- Au moins un nombre (0-9)
+- Au moins un caractère spécial (!@#$%^&*(),.?":{}|<>)
+
+**Exemple d'erreur de validation du mot de passe :**
+```json
+{
+  "success": false,
+  "message": "Données invalides",
+  "errors": [
+    {
+      "type": "field",
+      "msg": "Le mot de passe doit contenir au moins 8 caractères",
+      "path": "password",
+      "location": "body"
+    },
+    {
+      "type": "field",
+      "msg": "Le mot de passe doit contenir au moins une lettre majuscule",
+      "path": "password",
+      "location": "body"
     }
   ]
 }
@@ -1349,6 +1400,8 @@ Cette structure suit le pattern **MVC (Model-View-Controller)** adapté pour une
 - [x] Déconnexion
 - [x] Middleware de protection des routes
 - [x] Validation des données avec express-validator
+- [x] Validation stricte des mots de passe (8 caractères min, majuscule, minuscule, nombre, caractère spécial)
+- [x] Validation stricte des mots de passe (8 caractères min, majuscule, minuscule, nombre, caractère spécial)
 - [x] Gestion des erreurs HTTP personnalisées
 - [x] Support des cookies HttpOnly pour les refresh tokens
 - [x] Migration de base de données
