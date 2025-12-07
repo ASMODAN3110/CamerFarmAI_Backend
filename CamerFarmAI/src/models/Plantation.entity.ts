@@ -25,7 +25,7 @@ export class Plantation {
   location!: string;                // ex: "Bafoussam, Ouest"
 
   @Column('decimal', { precision: 10, scale: 2, nullable: true })
-  area?: number;                    // en hectares
+  area?: number;                    // en m² (mètres carrés) - le frontend convertit automatiquement depuis différentes unités
 
   @Column()
   cropType!: string;                 // ex: "manioc", "maïs", "arachide"

@@ -241,7 +241,7 @@ Cette migration crée un utilisateur de test avec :
 ### Migration `1700000006000-AddNewPlantationWithSensors.ts`
 
 Cette migration ajoute un nouveau champ à l'utilisateur `test.user@example.com` avec :
-- **1 nouvelle plantation** : "Nouveau Champ de Test" à Yaoundé (3.0 ha, cacao)
+- **1 nouvelle plantation** : "Nouveau Champ de Test" à Yaoundé (30 000 m² / 3.0 ha, cacao)
 - **2 capteurs** :
   - Capteur de température (type: `temperature`, status: `active`)
   - Capteur d'humidité du sol (type: `soilMoisture`, status: `active`)
@@ -333,6 +333,24 @@ npm run migration:generate # Générer une nouvelle migration
 ```
 
 ## API Endpoints
+
+### Note importante sur les unités de superficie
+
+Le champ `area` (superficie) dans les plantations est **toujours stocké en m² (mètres carrés)** dans la base de données.
+
+Le frontend permet aux utilisateurs de saisir la superficie dans différentes unités :
+- **m²** (mètres carrés) - unité par défaut
+- **ha** (hectares) - 1 ha = 10 000 m²
+- **acre** - 1 acre ≈ 4 047 m²
+- **km²** (kilomètres carrés) - 1 km² = 1 000 000 m²
+
+Le frontend effectue automatiquement la conversion en m² avant d'envoyer les données à l'API. Les valeurs retournées par l'API sont également en m².
+
+**Exemples de conversion :**
+- 2.3 ha = 23 000 m²
+- 3.0 ha = 30 000 m²
+- 1 acre ≈ 4 047 m²
+- 0.5 km² = 500 000 m²
 
 ### Authentification (`/api/v1/auth`)
 
@@ -662,10 +680,12 @@ npm run migration:generate # Générer une nouvelle migration
 {
   "name": "Champ Bafoussam",
   "location": "Bafoussam",
-  "area": 2.3,
+  "area": 23000,
   "cropType": "cacao"
 }
 ```
+
+**Note importante** : Le champ `area` doit être envoyé en **m² (mètres carrés)**. Le frontend gère automatiquement la conversion depuis différentes unités (m², ha, acre, km²) avant l'envoi à l'API.
 
 **Réponse 201 Created :**
 ```json
@@ -673,7 +693,7 @@ npm run migration:generate # Générer une nouvelle migration
   "id": "uuid",
   "name": "Champ Bafoussam",
   "location": "Bafoussam",
-  "area": 2.3,
+  "area": 23000,
   "createdAt": "2025-11-28T10:00:00.000Z",
   "cropType": "cacao",
   "ownerId": "uuid",
@@ -681,7 +701,9 @@ npm run migration:generate # Générer une nouvelle migration
 }
 ```
 
-**Note** : 5 capteurs (un de chaque type) et 3 actionneurs sont créés automatiquement.
+**Note** : 
+- 5 capteurs (un de chaque type) et 3 actionneurs sont créés automatiquement.
+- La superficie (`area`) est stockée en m² dans la base de données. Le frontend permet de saisir dans différentes unités (m², ha, acre, km²) et effectue la conversion automatiquement.
 
 ---
 
@@ -699,7 +721,7 @@ npm run migration:generate # Générer une nouvelle migration
     "id": "uuid",
     "name": "Champ Bafoussam",
     "location": "Bafoussam",
-    "area": 2.3,
+    "area": 23000,
     "createdAt": "2025-11-28T10:00:00.000Z",
     "cropType": "cacao",
     "ownerId": "uuid",
@@ -707,6 +729,8 @@ npm run migration:generate # Générer une nouvelle migration
   }
 ]
 ```
+
+**Note** : La superficie est retournée en m². Le frontend peut convertir cette valeur pour l'affichage dans l'unité choisie par l'utilisateur.
 
 ---
 
@@ -723,7 +747,7 @@ npm run migration:generate # Générer une nouvelle migration
   "id": "uuid",
   "name": "Champ Bafoussam",
   "location": "Bafoussam",
-  "area": 2.3,
+  "area": 23000,
   "createdAt": "2025-11-28T10:00:00.000Z",
   "cropType": "cacao",
   "ownerId": "uuid",
@@ -798,9 +822,11 @@ npm run migration:generate # Générer une nouvelle migration
 {
   "name": "Champ Bafoussam Modifié",
   "location": "Bafoussam Centre",
-  "area": 3.0
+  "area": 30000
 }
 ```
+
+**Note** : Le champ `area` doit être envoyé en m². Le frontend gère la conversion depuis différentes unités.
 
 **Réponse 200 OK :**
 ```json
@@ -808,7 +834,7 @@ npm run migration:generate # Générer une nouvelle migration
   "id": "uuid",
   "name": "Champ Bafoussam Modifié",
   "location": "Bafoussam Centre",
-  "area": 3.0,
+  "area": 30000,
   "createdAt": "2025-11-28T10:00:00.000Z",
   "cropType": "cacao",
   "ownerId": "uuid",
@@ -1185,7 +1211,7 @@ npm run migration:generate # Générer une nouvelle migration
     "id": "uuid",
     "name": "Champ Bafoussam",
     "location": "Bafoussam",
-    "area": 2.3,
+    "area": 23000,
     "createdAt": "2025-11-28T10:00:00.000Z",
     "cropType": "cacao",
     "ownerId": "uuid",
@@ -1193,6 +1219,8 @@ npm run migration:generate # Générer une nouvelle migration
   }
 ]
 ```
+
+**Note** : La superficie est retournée en m².
 
 **Erreur 403 Forbidden** (si pas admin/technicien) :
 ```json
@@ -1570,7 +1598,7 @@ Cette structure suit le pattern **MVC (Model-View-Controller)** adapté pour une
 | ownerId | UUID | Référence vers `users.id` |
 | name | VARCHAR | Nom du champ |
 | location | VARCHAR | Localisation |
-| area | DECIMAL(10,2) | Superficie (ha) |
+| area | DECIMAL(10,2) | Superficie en m² (mètres carrés). Le frontend permet de saisir dans différentes unités (m², ha, acre, km²) et convertit automatiquement en m² avant l'envoi à l'API. |
 | cropType | VARCHAR | Culture principale |
 | mode | ENUM | Mode de fonctionnement : `automatic` (défaut) ou `manual` |
 | coordinates | JSONB | Coordonnées optionnelles |
