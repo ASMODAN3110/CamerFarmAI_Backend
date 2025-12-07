@@ -27,6 +27,7 @@ type CreateOrUpdatePayload = {
   area?: number;
   cropType?: string;
   coordinates?: { lat: number; lng: number };
+  mode?: string;
 };
 
 type SensorReadingPayload = {
@@ -40,6 +41,11 @@ type CreateSensorPayload = {
 
 type UpdateSensorPayload = {
   status?: string;
+};
+
+type UpdateSensorThresholdPayload = {
+  seuilMin: number;
+  seuilMax: number;
 };
 
 type CreateActuatorPayload = {
@@ -58,6 +64,7 @@ const formatPlantationResponse = (plantation: Plantation) => ({
   area: plantation.area ?? null,
   createdAt: plantation.createdAt?.toISOString?.() ?? plantation.createdAt,
   cropType: plantation.cropType,
+  mode: plantation.mode,
   ownerId: plantation.ownerId,
   updatedAt: plantation.updatedAt?.toISOString?.() ?? plantation.updatedAt,
 });
@@ -202,13 +209,17 @@ export const getAll = async (_req: Request, res: Response) => {
 
 export const update = async (req: Request, res: Response) => {
   const { id } = req.params;
-  const { name, location, area, cropType, coordinates }: CreateOrUpdatePayload = req.body;
+  const { name, location, area, cropType, coordinates, mode }: CreateOrUpdatePayload = req.body;
+  const ownerId = req.user!.id;
 
-  const plantation = await findOwnedPlantation(id, req.user!.id);
+  const plantation = await findOwnedPlantation(id, ownerId);
 
   if (!plantation) {
     return res.status(404).json({ message: 'Champ non trouvé' });
   }
+
+  // Sauvegarder l'ancien mode pour détecter les changements
+  const oldMode = plantation.mode;
 
   Object.assign(plantation, {
     name,
@@ -216,8 +227,36 @@ export const update = async (req: Request, res: Response) => {
     area,
     cropType,
     coordinates,
+    ...(mode !== undefined ? { mode } : {}),
   });
   await plantationRepo.save(plantation);
+
+  // Générer un événement si le mode a changé
+  if (mode !== undefined && mode !== oldMode) {
+    try {
+      const { EventService } = require('../services/event/EventService');
+      const { EventType } = require('../models/Event.entity');
+      const { PlantationMode } = require('../models/Plantation.entity');
+
+      const modeLabel = mode === PlantationMode.AUTOMATIC ? 'automatique' : 'manuel';
+      const oldModeLabel = oldMode === PlantationMode.AUTOMATIC ? 'automatique' : 'manuel';
+      
+      const description = `Le mode de contrôle de la plantation "${plantation.name}" a été changé de ${oldModeLabel} à ${modeLabel}`;
+
+      const event = await EventService.createEvent(
+        EventType.MODE_CHANGED,
+        description,
+        undefined,
+        undefined
+      );
+
+      // Traiter l'événement et envoyer les notifications au propriétaire
+      await EventService.processEvent(event, [ownerId]);
+    } catch (error) {
+      // Ne pas faire échouer la requête si la génération d'événement échoue
+      console.error('Erreur lors de la génération de l\'événement:', error);
+    }
+  }
 
   return res.json(formatPlantationResponse(plantation));
 };
@@ -328,6 +367,49 @@ export const updateSensor = async (req: Request, res: Response) => {
   return res.json(sensor);
 };
 
+export const updateSensorThresholds = async (req: Request, res: Response) => {
+  const { id, sensorId } = req.params;
+  const ownerId = req.user!.id;
+
+  const plantation = await findOwnedPlantation(id, ownerId);
+  if (!plantation) {
+    return res.status(404).json({ message: 'Champ non trouvé' });
+  }
+
+  const sensorRepo = getSensorRepo();
+  const sensor = await sensorRepo.findOne({
+    where: { id: sensorId, plantationId: plantation.id },
+  });
+
+  if (!sensor) {
+    return res.status(404).json({ message: 'Capteur non trouvé' });
+  }
+
+  const { seuilMin, seuilMax }: UpdateSensorThresholdPayload = req.body;
+
+  if (seuilMin === undefined || seuilMax === undefined) {
+    return res.status(400).json({
+      message: 'Les champs seuilMin et seuilMax sont obligatoires.',
+    });
+  }
+
+  if (typeof seuilMin !== 'number' || typeof seuilMax !== 'number') {
+    return res.status(400).json({
+      message: 'Les seuils doivent être des nombres.',
+    });
+  }
+
+  try {
+    sensor.modifierSeuil(seuilMin, seuilMax);
+    await sensorRepo.save(sensor);
+    return res.json(sensor);
+  } catch (error: any) {
+    return res.status(400).json({
+      message: error.message || 'Erreur lors de la modification des seuils.',
+    });
+  }
+};
+
 // Gestion des lectures de capteurs
 export const addSensorReading = async (req: Request, res: Response) => {
   const { id, sensorId } = req.params;
@@ -363,6 +445,15 @@ export const addSensorReading = async (req: Request, res: Response) => {
   });
 
   await sensorReadingRepo.save(reading);
+
+  // Vérifier automatiquement les seuils et créer un événement si nécessaire
+  try {
+    const { ThresholdService } = require('../services/event/ThresholdService');
+    await ThresholdService.checkThresholds(sensor, reading);
+  } catch (error) {
+    // Ne pas faire échouer la requête si la vérification de seuil échoue
+    console.error('Erreur lors de la vérification des seuils:', error);
+  }
 
   return res.status(201).json(reading);
 };
@@ -469,6 +560,9 @@ export const updateActuator = async (req: Request, res: Response) => {
 
   const { name, type, status, metadata }: UpdateActuatorPayload = req.body;
 
+  // Sauvegarder l'ancien statut pour détecter les changements
+  const oldStatus = actuator.status;
+
   Object.assign(actuator, {
     ...(name !== undefined ? { name } : {}),
     ...(type !== undefined ? { type } : {}),
@@ -477,6 +571,36 @@ export const updateActuator = async (req: Request, res: Response) => {
   });
 
   await actuatorRepo.save(actuator);
+
+  // Générer un événement si le statut a changé
+  if (status !== undefined && status !== oldStatus) {
+    try {
+      const { EventService } = require('../services/event/EventService');
+      const { EventType } = require('../models/Event.entity');
+      const { ActuatorStatus } = require('../models/Actuator.entity');
+
+      const eventType = status === ActuatorStatus.ACTIVE 
+        ? EventType.ACTIONNEUR_ACTIVE 
+        : EventType.ACTIONNEUR_DESACTIVE;
+      
+      const description = status === ActuatorStatus.ACTIVE
+        ? `L'actionneur "${actuator.name}" (${actuator.type}) a été activé`
+        : `L'actionneur "${actuator.name}" (${actuator.type}) a été désactivé`;
+
+      const event = await EventService.createEvent(
+        eventType,
+        description,
+        undefined,
+        actuator.id
+      );
+
+      // Traiter l'événement et envoyer les notifications au propriétaire
+      await EventService.processEvent(event, [ownerId]);
+    } catch (error) {
+      // Ne pas faire échouer la requête si la génération d'événement échoue
+      console.error('Erreur lors de la génération de l\'événement:', error);
+    }
+  }
 
   return res.json(actuator);
 };

@@ -29,9 +29,11 @@
     "express-validator": "^7.3.1",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
+    "nodemailer": "^7.0.11",
     "pg": "^8.16.3",
     "reflect-metadata": "^0.2.2",
     "ts-node": "^10.9.2",
+    "twilio": "^5.0.0",
     "typeorm": "^0.3.27",
     "typescript": "^5.9.3"
   },
@@ -40,6 +42,7 @@
     "@types/cors": "^2.8.19",
     "@types/helmet": "^0.0.48",
     "@types/multer": "^2.0.0",
+    "@types/nodemailer": "^7.0.4",
     "multer": "^2.0.2",
     "nodemon": "^3.1.11"
   }

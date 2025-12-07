@@ -1,16 +1,22 @@
 # CamerFarm AI – Web App Requirements
 
+# ============================================
 # Runtime / Tooling
+# ============================================
 node>=18.17.0
 npm>=10.0.0
 postgresql>=14
 
+# ============================================
+# Installation
+# ============================================
 # Backend (npm install à la racine Backend/CamerFarmAI)
 # Installation: npm install (ou npm ci pour une installation reproductible)
 
 # ============================================
 # Dépendances de production (dependencies)
 # ============================================
+
 # Authentification & Sécurité
 bcrypt@^6.0.0
 jsonwebtoken@^9.0.2
@@ -30,6 +36,10 @@ typeorm@^0.3.27
 pg@^8.16.3
 reflect-metadata@^0.2.2
 
+# Notifications
+nodemailer@^7.0.11
+twilio@^5.0.0
+
 # Configuration & Environnement
 dotenv@^17.2.3
 
@@ -47,6 +57,7 @@ ts-node@^10.9.2
 # ============================================
 # Dépendances de développement (devDependencies)
 # ============================================
+
 # Outils de développement
 nodemon@^3.1.11
 
@@ -58,6 +69,7 @@ multer@^2.0.2
 @types/cors@^2.8.19
 @types/helmet@^0.0.48
 @types/multer@^2.0.0
+@types/nodemailer@^7.0.4
 
 # ============================================
 # Notes d'installation
@@ -76,6 +88,16 @@ multer@^2.0.2
 #
 # Pour mettre à jour les dépendances :
 #   npm update
+
+# ============================================
+# Fonctionnalités principales
+# ============================================
+# - Authentification JWT avec refresh tokens
+# - Gestion des plantations, capteurs et actionneurs
+# - Système d'événements (seuils, actionneurs, mode)
+# - Notifications multi-canaux (WEB, EMAIL, WHATSAPP)
+# - Upload de fichiers (avatars utilisateurs)
+# - Système de rôles (FARMER, TECHNICIAN, ADMIN)
 
 
 

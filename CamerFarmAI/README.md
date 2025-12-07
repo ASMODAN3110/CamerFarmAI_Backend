@@ -28,7 +28,9 @@ Backend/
     │   └── database.ts    # Configuration TypeORM
     ├── controllers/       # Contrôleurs HTTP
     │   ├── auth.controllers.ts
-    │   └── plantation.controller.ts
+    │   ├── plantation.controller.ts
+    │   ├── event.controller.ts
+    │   └── notification.controller.ts
     ├── middleware/        # Middlewares Express
     │   ├── auth.middleware.ts
     │   └── upload.middleware.ts
@@ -42,9 +44,20 @@ Backend/
     │   └── Actuator.entity.ts
     ├── routes/            # Définition des routes API
     │   ├── auth.routes.ts
-    │   └── plantation.routes.ts
+    │   ├── plantation.routes.ts
+    │   ├── event.routes.ts
+    │   └── notification.routes.ts
     ├── services/          # Services métier
-    │   └── auth.service.ts
+    │   ├── auth.service.ts
+    │   ├── event/         # Services d'événements
+    │   │   ├── EventService.ts
+    │   │   └── ThresholdService.ts
+    │   └── notification/  # Services de notifications
+    │       ├── NotificationService.abstract.ts
+    │       ├── NotificationServiceFactory.ts
+    │       ├── EmailNotificationService.ts
+    │       ├── WebNotificationService.ts
+    │       └── WhatsAppNotificationService.ts
     ├── types/             # Types TypeScript (DTOs)
     │   └── auth.types.ts
     ├── utils/             # Utilitaires
@@ -62,6 +75,8 @@ Contient les fichiers de configuration de l'application :
 Contient les contrôleurs qui gèrent les requêtes HTTP :
 - `auth.controllers.ts` - Authentification (register, login, refresh, profil…)
 - `plantation.controller.ts` - Gestion des plantations, capteurs et actionneurs
+- `event.controller.ts` - Gestion des événements système (seuils dépassés, actionneurs activés/désactivés)
+- `notification.controller.ts` - Gestion des notifications utilisateurs (WEB, EMAIL, WHATSAPP)
 
 ### `/src/middleware`
 Contient les middlewares Express personnalisés :
@@ -74,6 +89,12 @@ Contient les scripts de migration de base de données :
 - `1700000006000-AddNewPlantationWithSensors.ts` - Ajout d'un nouveau champ à l'utilisateur de test avec 2 capteurs et 3 actionneurs
 - `1700000007000-AddSensorToNewPlantation.ts` - Ajout d'un capteur supplémentaire à la plantation "Nouveau Champ de Test"
 - `1700000008000-SeedSensorReadings.ts` - Ajout de lectures de capteurs (24 lectures par capteur) pour les plantations "Champ de test" et "Nouveau Champ de Test"
+- `1700000009000-CreateEventsAndNotifications.ts` - Création des tables `events` et `notifications` avec leurs relations
+- `1700000010000-AddIsReadToNotifications.ts` - Ajout des colonnes `isRead` et `dateLu` à la table `notifications` pour gérer l'état de lecture
+- `1700000011000-AddNotificationsForPauline.ts` - Ajout de 5 notifications variées (WEB, EMAIL, WHATSAPP) pour l'utilisateur Pauline Ndoumbé
+- `1700000012000-AddWebNotificationsForPauline.ts` - Ajout de 5 notifications WEB non lues pour l'utilisateur Pauline Ndoumbé
+- `1700000013000-AddMoreWebNotificationsForPauline.ts` - Ajout de 5 notifications WEB non lues supplémentaires pour l'utilisateur Pauline Ndoumbé
+- `1700000014000-AddModeToPlantationsAndModeChangedEvent.ts` - Ajout du champ `mode` (automatic/manual) aux plantations et du type d'événement `mode_changed`
 
 ### `/src/models`
 Contient les entités TypeORM :
@@ -82,15 +103,26 @@ Contient les entités TypeORM :
 - `Sensor.entity.ts` - Capteurs physiques (type, statut) liés à une plantation
 - `SensorReading.entity.ts` - Lectures de capteurs (valeurs mesurées) liées à un capteur
 - `Actuator.entity.ts` - Actionneurs (pompe, ventilateur, éclairage, statut)
+- `Event.entity.ts` - Événements système (seuil dépassé, actionneur activé/désactivé)
+- `Notification.entity.ts` - Notifications utilisateurs (WEB, EMAIL, WHATSAPP) avec gestion de l'état de lecture
 
 ### `/src/routes`
 Contient la définition des routes de l'API :
 - `auth.routes.ts` - Authentification avec validation
 - `plantation.routes.ts` - CRUD plantations + capteurs/actionneurs
+- `event.routes.ts` - Routes pour consulter les événements système
+- `notification.routes.ts` - Routes pour gérer les notifications utilisateurs
 
 ### `/src/services`
 Contient la logique métier réutilisable :
 - `auth.service.ts` - Service d'authentification (inscription, validation, génération de tokens)
+- `event/EventService.ts` - Service de gestion des événements système
+- `event/ThresholdService.ts` - Service de gestion des seuils et alertes
+- `notification/NotificationService.abstract.ts` - Classe abstraite pour les services de notification
+- `notification/NotificationServiceFactory.ts` - Factory pour créer les services de notification appropriés
+- `notification/EmailNotificationService.ts` - Service d'envoi d'emails via nodemailer
+- `notification/WebNotificationService.ts` - Service de notifications web (stockage en base)
+- `notification/WhatsAppNotificationService.ts` - Service d'envoi de notifications WhatsApp via Twilio
 
 ### `/src/types`
 Contient les DTOs (Data Transfer Objects) :
@@ -115,6 +147,10 @@ Contient les utilitaires :
 - **Helmet** - Sécurisation des en-têtes HTTP
 - **express-validator** - Validation des données d'entrée (validation stricte des mots de passe)
 - **cookie-parser** - Gestion des cookies HTTP (pour les refresh tokens)
+
+### Notifications
+- **nodemailer** - Envoi d'emails (SMTP/SendGrid)
+- **twilio** - Envoi de notifications WhatsApp
 
 ### Outils de développement
 - **ts-node** - Exécution TypeScript
@@ -164,6 +200,25 @@ NODE_ENV=development
 
 # Frontend (optionnel, par défaut: http://localhost:5173)
 FRONTEND_URL=http://localhost:5173
+
+# Email (pour les notifications)
+# Option 1: SMTP standard
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=votre_email@gmail.com
+SMTP_PASS=votre_mot_de_passe_application
+SMTP_FROM=noreply@camerfarmai.com
+
+# Option 2: SendGrid (alternative)
+# SENDGRID_HOST=smtp.sendgrid.net
+# SENDGRID_USER=apikey
+# SENDGRID_API_KEY=votre_cle_api_sendgrid
+# SENDGRID_FROM=noreply@camerfarmai.com
+
+# WhatsApp (pour les notifications via Twilio)
+TWILIO_ACCOUNT_SID=votre_account_sid_twilio
+TWILIO_AUTH_TOKEN=votre_auth_token_twilio
+TWILIO_WHATSAPP_NUMBER=whatsapp:+14155238886
 ```
 
 ## Jeu de données de démonstration
@@ -217,6 +272,47 @@ Cette migration ajoute des lectures de capteurs pour les plantations "Champ de t
 
 **Note** : Cette migration nécessite que les migrations précédentes aient été exécutées au préalable.
 
+### Migration `1700000009000-CreateEventsAndNotifications.ts`
+
+Cette migration crée les tables nécessaires au système d'événements et de notifications :
+- **Table `events`** : Stocke les événements système (seuil dépassé, actionneur activé/désactivé)
+- **Table `notifications`** : Stocke les notifications envoyées aux utilisateurs via différents canaux (WEB, EMAIL, WHATSAPP)
+
+**Note** : Cette migration doit être exécutée avant les migrations suivantes qui utilisent les notifications.
+
+### Migration `1700000010000-AddIsReadToNotifications.ts`
+
+Cette migration ajoute la fonctionnalité de marquage "lu/non lu" aux notifications :
+- **Colonne `isRead`** : Boolean indiquant si la notification a été lue (défaut: `false`)
+- **Colonne `dateLu`** : Date de lecture de la notification (nullable)
+- **Index** : Création d'un index sur `isRead` pour améliorer les performances des requêtes
+
+**Note** : Cette migration vérifie automatiquement si les colonnes existent déjà avant de les créer (compatibilité avec `synchronize: true`).
+
+### Migration `1700000011000-AddNotificationsForPauline.ts`
+
+Cette migration ajoute des notifications de test pour l'utilisateur Pauline Ndoumbé (`pauline@example.com`) :
+- **5 événements variés** : Seuils dépassés, actionneurs activés/désactivés
+- **5 notifications** : Mélange de canaux (WEB, EMAIL, WHATSAPP) avec différents états de lecture (2 lues, 3 non lues)
+
+**Note** : Cette migration nécessite que l'utilisateur `pauline@example.com` existe dans la base de données.
+
+### Migration `1700000012000-AddWebNotificationsForPauline.ts`
+
+Cette migration ajoute 5 notifications WEB non lues pour l'utilisateur Pauline Ndoumbé :
+- **5 événements** : Température critique, humidité basse, irrigation activée, luminosité élevée, éclairage désactivé
+- **5 notifications WEB** : Toutes non lues (`isRead = false`)
+
+**Note** : Cette migration nécessite que l'utilisateur `pauline@example.com` existe dans la base de données.
+
+### Migration `1700000013000-AddMoreWebNotificationsForPauline.ts`
+
+Cette migration ajoute 5 notifications WEB non lues supplémentaires pour l'utilisateur Pauline Ndoumbé :
+- **5 événements** : Niveau d'eau critique, pompe activée, CO2 élevé, ventilation activée, température du sol élevée
+- **5 notifications WEB** : Toutes non lues (`isRead = false`)
+
+**Note** : Cette migration nécessite que l'utilisateur `pauline@example.com` existe dans la base de données.
+
 Pour exécuter toutes les migrations :
 ```bash
 npm run migration:run
@@ -268,6 +364,24 @@ npm run migration:generate # Générer une nouvelle migration
 | GET | `/:id/actuators` | Lister les actionneurs du champ | Privé (FARMER propriétaire) |
 | PATCH | `/:id/actuators/:actuatorId` | Mettre à jour un actionneur | Privé (FARMER propriétaire) |
 | GET | `/` | Lister toutes les plantations (avec propriétaire) | Privé (TECHNICIAN, ADMIN) |
+
+### Événements (`/api/v1/events`)
+
+| Méthode | Endpoint | Description | Accès |
+|---------|----------|-------------|-------|
+| GET | `/my` | Lister tous les événements de l'utilisateur (toutes ses plantations) | Privé (FARMER) |
+| GET | `/plantation/:id` | Lister les événements d'une plantation spécifique | Privé (FARMER propriétaire) |
+| GET | `/:eventId` | Obtenir les détails d'un événement spécifique | Privé (FARMER propriétaire) |
+
+### Notifications (`/api/v1/notifications`)
+
+| Méthode | Endpoint | Description | Accès |
+|---------|----------|-------------|-------|
+| GET | `/my` | Lister les notifications de l'utilisateur connecté (option: `?unreadOnly=true`) | Privé |
+| GET | `/stats` | Obtenir les statistiques des notifications (total, envoyées, en attente, erreurs, non lues) | Privé |
+| GET | `/:notificationId` | Obtenir une notification spécifique | Privé |
+| PATCH | `/:notificationId/read` | Marquer une notification comme lue | Privé |
+| DELETE | `/:id` | Supprimer une notification | Privé |
 
 ## Guide complet des API - Test avec Postman
 
@@ -1407,6 +1521,11 @@ Cette structure suit le pattern **MVC (Model-View-Controller)** adapté pour une
 - [x] Migration de base de données
 - [x] Système de rôles avec enum (FARMER, TECHNICIAN, ADMIN)
 - [x] Middleware de restriction par rôle (restrictTo)
+- [x] Système d'événements (seuils dépassés, actionneurs activés/désactivés, changement de mode)
+- [x] Système de notifications multi-canaux (WEB, EMAIL, WHATSAPP)
+- [x] Gestion de l'état de lecture des notifications
+- [x] Services de notification avec factory pattern
+- [x] Mode automatique/manuel pour les plantations
 
 ###  En cours / À faire
 
@@ -1453,6 +1572,7 @@ Cette structure suit le pattern **MVC (Model-View-Controller)** adapté pour une
 | location | VARCHAR | Localisation |
 | area | DECIMAL(10,2) | Superficie (ha) |
 | cropType | VARCHAR | Culture principale |
+| mode | ENUM | Mode de fonctionnement : `automatic` (défaut) ou `manual` |
 | coordinates | JSONB | Coordonnées optionnelles |
 | createdAt / updatedAt | TIMESTAMP | Timestamps |
 
@@ -1482,6 +1602,32 @@ Cette structure suit le pattern **MVC (Model-View-Controller)** adapté pour une
 | type | VARCHAR | Catégorie (`pump`, `fan`, `light`, …) |
 | status | ENUM | `active` / `inactive` |
 | metadata | JSONB | Informations complémentaires |
+| createdAt / updatedAt | TIMESTAMP | Timestamps |
+
+### Table `events`
+| Colonne | Type | Description |
+|---------|------|-------------|
+| id | UUID | Identifiant de l'événement |
+| type | ENUM | Type d'événement : `threshold_exceeded`, `actuator_activated`, `actuator_deactivated`, `mode_changed` |
+| date | TIMESTAMP | Date de l'événement |
+| description | TEXT | Description de l'événement |
+| sensorId | UUID | Référence vers le capteur (nullable) |
+| actuatorId | UUID | Référence vers l'actionneur (nullable) |
+| metadata | JSONB | Données supplémentaires (valeurs, seuils, etc.) |
+| createdAt / updatedAt | TIMESTAMP | Timestamps |
+
+### Table `notifications`
+| Colonne | Type | Description |
+|---------|------|-------------|
+| id | UUID | Identifiant de la notification |
+| userId | UUID | Référence vers l'utilisateur |
+| eventId | UUID | Référence vers l'événement |
+| type | ENUM | Type de canal : `WEB`, `EMAIL`, `WHATSAPP` |
+| statut | ENUM | Statut : `EN_ATTENTE`, `ENVOYEE`, `ERREUR` |
+| dateEnvoi | TIMESTAMP | Date d'envoi |
+| isRead | BOOLEAN | Indique si la notification a été lue (défaut: `false`) |
+| dateLu | TIMESTAMP | Date de lecture (nullable) |
+| message | TEXT | Message de la notification |
 | createdAt / updatedAt | TIMESTAMP | Timestamps |
 
 ### Enum UserRole

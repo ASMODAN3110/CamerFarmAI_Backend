@@ -39,6 +39,12 @@ export class Sensor {
   @Column('uuid')
   plantationId!: string;
 
+  @Column('decimal', { precision: 10, scale: 2, nullable: true })
+  seuilMin?: number;
+
+  @Column('decimal', { precision: 10, scale: 2, nullable: true })
+  seuilMax?: number;
+
   @OneToMany(() => require('./SensorReading.entity').SensorReading, (reading: any) => reading.sensor)
   readings!: any[];
 
@@ -47,5 +53,13 @@ export class Sensor {
 
   @UpdateDateColumn()
   updatedAt!: Date;
+
+  modifierSeuil(min: number, max: number): void {
+    if (min >= max) {
+      throw new Error('Le seuil minimum doit être inférieur au seuil maximum');
+    }
+    this.seuilMin = min;
+    this.seuilMax = max;
+  }
 }
 

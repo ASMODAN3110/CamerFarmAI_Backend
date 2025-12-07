@@ -73,6 +73,9 @@ uploads/avatars/
 public/uploads/
 sessions/
 
+# Note: Les fichiers uploads/avatars/ sont ignorés mais le dossier peut être créé
+# pour permettre l'upload de fichiers. Les fichiers uploadés ne seront pas versionnés.
+
 # Fichiers de documentation générés
 docs/build/
 

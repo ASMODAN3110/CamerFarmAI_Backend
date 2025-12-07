@@ -20,6 +20,7 @@ router.delete('/:id', plantationController.remove);
 router.post('/:id/sensors', plantationController.createSensor);
 router.get('/:id/sensors', plantationController.getSensors);
 router.patch('/:id/sensors/:sensorId', plantationController.updateSensor);
+router.patch('/:id/sensors/:sensorId/thresholds', plantationController.updateSensorThresholds);
 
 // Gestion des lectures de capteurs
 router.post('/:id/sensors/:sensorId/readings', plantationController.addSensorReading);
