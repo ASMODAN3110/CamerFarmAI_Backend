@@ -11,6 +11,7 @@ export class RegisterDto {
   export class LoginDto {
     email!: string;
     password!: string;
+    twoFactorCode?: string; // Code 2FA optionnel
   }
 
   // UpdateProfileDto

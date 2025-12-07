@@ -49,6 +49,12 @@ const validateLogin = [
   body('password')
     .notEmpty()
     .withMessage('Le mot de passe est requis'),
+  body('twoFactorCode')
+    .optional()
+    .isString()
+    .withMessage('Le code 2FA doit être une chaîne de caractères')
+    .isLength({ min: 6, max: 6 })
+    .withMessage('Le code 2FA doit contenir 6 chiffres'),
 ];
 
 // Middlewares de validation pour la mise à jour du profil
@@ -88,12 +94,39 @@ authRouter.post('/register', validateRegister, authController.register);
 
 /**
  * @route   POST /api/v1/auth/login
- * @desc    Connexion utilisateur → retourne accessToken + refreshToken (HttpOnly cookie)
+ * @desc    Connexion utilisateur → retourne accessToken + refreshToken (HttpOnly cookie) ou temporaryToken si 2FA activé
  * @access  Public
  * @SRS     EF-07
  * @Jira    CA-40
  */
 authRouter.post('/login', validateLogin, authController.login);
+
+// Middleware de validation pour la vérification 2FA lors de la connexion
+const validateVerify2FA = [
+  body('temporaryToken')
+    .notEmpty()
+    .withMessage('Le token temporaire est requis')
+    .isString()
+    .withMessage('Le token temporaire doit être une chaîne de caractères'),
+  body('twoFactorCode')
+    .notEmpty()
+    .withMessage('Le code 2FA est requis')
+    .isString()
+    .withMessage('Le code 2FA doit être une chaîne de caractères')
+    .isLength({ min: 6, max: 6 })
+    .withMessage('Le code 2FA doit contenir 6 chiffres')
+    .matches(/^\d+$/)
+    .withMessage('Le code 2FA doit contenir uniquement des chiffres'),
+];
+
+/**
+ * @route   POST /api/v1/auth/login/verify-2fa
+ * @desc    Vérifier le code 2FA et compléter la connexion
+ * @access  Public
+ * @SRS     EF-07
+ * @Jira    CA-40
+ */
+authRouter.post('/login/verify-2fa', validateVerify2FA, authController.verifyTwoFactorLogin);
 
 /**
  * @route   POST /api/v1/auth/refresh
@@ -139,6 +172,40 @@ authRouter.post(
   avatarUpload.single('avatar'),
   authController.uploadAvatar
 );
+
+/**
+ * @route   GET /api/v1/auth/2fa/generate
+ * @desc    Générer un secret 2FA et un QR code pour l'utilisateur connecté
+ * @access  Privé (protégé par JWT)
+ */
+authRouter.get('/2fa/generate', protectRoute, authController.generateTwoFactorSecret);
+
+// Middleware de validation pour les routes 2FA
+const validateTwoFactorToken = [
+  body('token')
+    .notEmpty()
+    .withMessage('Le code 2FA est requis')
+    .isString()
+    .withMessage('Le code 2FA doit être une chaîne de caractères')
+    .isLength({ min: 6, max: 6 })
+    .withMessage('Le code 2FA doit contenir 6 chiffres')
+    .matches(/^\d+$/)
+    .withMessage('Le code 2FA doit contenir uniquement des chiffres'),
+];
+
+/**
+ * @route   POST /api/v1/auth/2fa/enable
+ * @desc    Activer le 2FA pour l'utilisateur connecté
+ * @access  Privé (protégé par JWT)
+ */
+authRouter.post('/2fa/enable', protectRoute, validateTwoFactorToken, authController.enableTwoFactor);
+
+/**
+ * @route   POST /api/v1/auth/2fa/disable
+ * @desc    Désactiver le 2FA pour l'utilisateur connecté
+ * @access  Privé (protégé par JWT)
+ */
+authRouter.post('/2fa/disable', protectRoute, validateTwoFactorToken, authController.disableTwoFactor);
 
 /**
  * @route   POST /api/v1/auth/forgot-password

@@ -5,6 +5,8 @@ import { RegisterDto, UpdateProfileDto } from '../types/auth.types';
 import * as jwt from 'jsonwebtoken';
 import type { SignOptions } from 'jsonwebtoken';
 import { HttpException } from '../utils/HttpException';
+import * as speakeasy from 'speakeasy';
+import * as QRCode from 'qrcode';
 
 const userRepository = AppDataSource.getRepository(User);
 
@@ -70,6 +72,18 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
+  // 3.1. Génération d'un token temporaire pour la vérification 2FA (5 minutes)
+  static generateTemporaryToken(userId: string): string {
+    const payload = {
+      sub: userId,
+      type: '2fa_verification', // Marqueur pour indiquer que c'est un token temporaire
+    };
+
+    return jwt.sign(payload, JWT_SECRET, {
+      expiresIn: '5m', // 5 minutes
+    } as SignOptions);
+  }
+
   // 4. Vérification du refresh token + génération d'un nouveau couple
   static async refreshAccessToken(refreshToken: string): Promise<{ accessToken: string; refreshToken: string }> {
     try {
@@ -93,6 +107,26 @@ export class AuthService {
     try {
       const decoded = jwt.verify(token, JWT_SECRET) as jwt.JwtPayload;
       return await userRepository.findOne({ where: { id: decoded.sub } });
+    } catch {
+      return null;
+    }
+  }
+
+  // 5.1. Vérifier et décoder un token temporaire 2FA
+  static verifyTemporaryToken(temporaryToken: string): { userId: string } | null {
+    try {
+      const decoded = jwt.verify(temporaryToken, JWT_SECRET) as jwt.JwtPayload & { type?: string };
+      
+      // Vérifier que c'est bien un token temporaire pour la 2FA
+      if (decoded.type !== '2fa_verification') {
+        return null;
+      }
+
+      if (!decoded.sub) {
+        return null;
+      }
+
+      return { userId: decoded.sub };
     } catch {
       return null;
     }
@@ -131,6 +165,91 @@ export class AuthService {
       user.lastName = dto.lastName;
     }
 
+    return await userRepository.save(user);
+  }
+
+  // 7. Générer un secret 2FA et un QR code
+  static async generateTwoFactorSecret(userId: string): Promise<{ secret: string; qrCodeUrl: string }> {
+    const user = await userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new HttpException(404, 'Utilisateur non trouvé');
+    }
+
+    // Générer un secret TOTP
+    const secret = speakeasy.generateSecret({
+      name: `CamerFarmAI (${user.email || user.phone})`,
+      issuer: 'CamerFarmAI',
+    });
+
+    // Sauvegarder temporairement le secret (pas encore activé)
+    user.twoFactorSecret = secret.base32;
+    await userRepository.save(user);
+
+    // Générer le QR code
+    const qrCodeUrl = await QRCode.toDataURL(secret.otpauth_url || '');
+
+    return {
+      secret: secret.base32 || '',
+      qrCodeUrl,
+    };
+  }
+
+  // 8. Vérifier un code 2FA
+  static verifyTwoFactorToken(secret: string, token: string): boolean {
+    return speakeasy.totp.verify({
+      secret,
+      encoding: 'base32',
+      token,
+      window: 2, // Permet une fenêtre de ±2 périodes (60 secondes chacune)
+    });
+  }
+
+  // 9. Activer le 2FA pour un utilisateur
+  static async enableTwoFactor(userId: string, token: string): Promise<User> {
+    const user = await userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new HttpException(404, 'Utilisateur non trouvé');
+    }
+
+    if (!user.twoFactorSecret) {
+      throw new HttpException(400, 'Aucun secret 2FA généré. Veuillez d\'abord générer un secret.');
+    }
+
+    // Vérifier le code
+    const isValid = this.verifyTwoFactorToken(user.twoFactorSecret, token);
+    if (!isValid) {
+      throw new HttpException(400, 'Code 2FA invalide');
+    }
+
+    // Activer le 2FA
+    user.twoFactorEnabled = true;
+    return await userRepository.save(user);
+  }
+
+  // 10. Désactiver le 2FA pour un utilisateur
+  static async disableTwoFactor(userId: string, token: string): Promise<User> {
+    const user = await userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new HttpException(404, 'Utilisateur non trouvé');
+    }
+
+    if (!user.twoFactorEnabled) {
+      throw new HttpException(400, 'Le 2FA n\'est pas activé pour cet utilisateur');
+    }
+
+    if (!user.twoFactorSecret) {
+      throw new HttpException(400, 'Aucun secret 2FA trouvé');
+    }
+
+    // Vérifier le code avant de désactiver
+    const isValid = this.verifyTwoFactorToken(user.twoFactorSecret, token);
+    if (!isValid) {
+      throw new HttpException(400, 'Code 2FA invalide');
+    }
+
+    // Désactiver le 2FA et supprimer le secret
+    user.twoFactorEnabled = false;
+    user.twoFactorSecret = null;
     return await userRepository.save(user);
   }
 }
