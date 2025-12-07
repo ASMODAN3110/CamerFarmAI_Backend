@@ -8,6 +8,11 @@ export enum PlantationStatus {
   INACTIVE = 'inactive',
 }
 
+export enum PlantationMode {
+  AUTOMATIC = 'automatic',
+  MANUAL = 'manual',
+}
+
 @Entity('plantations')
 export class Plantation {
   @PrimaryGeneratedColumn('uuid')
@@ -28,6 +33,13 @@ export class Plantation {
   @Column({ type: 'jsonb', nullable: true })
   coordinates?: { lat: number; lng: number }; // pour carte future
 
+  @Column({
+    type: 'enum',
+    enum: PlantationMode,
+    default: PlantationMode.AUTOMATIC,
+  })
+  mode!: PlantationMode; // Mode de contrôle : automatique ou manuel
+
   @ManyToOne(() => User, user => user.plantations)
   owner!: User;
 
@@ -45,4 +57,48 @@ export class Plantation {
 
   @UpdateDateColumn()
   updatedAt!: Date;
+
+  getEtat(): {
+    status: 'healthy' | 'warning' | 'critical' | 'unknown';
+    activeSensors: number;
+    totalSensors: number;
+    activeActuators: number;
+    totalActuators: number;
+    message: string;
+  } {
+    const sensors = this.sensors || [];
+    const actuators = this.actuators || [];
+    
+    const activeSensors = sensors.filter((s: any) => s.status === 'active').length;
+    const totalSensors = sensors.length;
+    const activeActuators = actuators.filter((a: any) => a.status === 'active').length;
+    const totalActuators = actuators.length;
+
+    // Déterminer l'état global
+    let status: 'healthy' | 'warning' | 'critical' | 'unknown' = 'unknown';
+    let message = 'État inconnu';
+
+    if (totalSensors === 0 && totalActuators === 0) {
+      status = 'unknown';
+      message = 'Aucun capteur ou actionneur configuré';
+    } else if (activeSensors === 0 && totalSensors > 0) {
+      status = 'critical';
+      message = 'Aucun capteur actif';
+    } else if (activeSensors < totalSensors * 0.5) {
+      status = 'warning';
+      message = 'Moins de la moitié des capteurs sont actifs';
+    } else {
+      status = 'healthy';
+      message = 'Tous les systèmes fonctionnent normalement';
+    }
+
+    return {
+      status,
+      activeSensors,
+      totalSensors,
+      activeActuators,
+      totalActuators,
+      message,
+    };
+  }
 }

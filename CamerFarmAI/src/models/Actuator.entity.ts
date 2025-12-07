@@ -39,5 +39,13 @@ export class Actuator {
 
   @UpdateDateColumn()
   updatedAt!: Date;
+
+  activer(): void {
+    this.status = ActuatorStatus.ACTIVE;
+  }
+
+  desactiver(): void {
+    this.status = ActuatorStatus.INACTIVE;
+  }
 }
 
