@@ -95,6 +95,7 @@ Contient les scripts de migration de base de données :
 - `1700000012000-AddWebNotificationsForPauline.ts` - Ajout de 5 notifications WEB non lues pour l'utilisateur Pauline Ndoumbé
 - `1700000013000-AddMoreWebNotificationsForPauline.ts` - Ajout de 5 notifications WEB non lues supplémentaires pour l'utilisateur Pauline Ndoumbé
 - `1700000014000-AddModeToPlantationsAndModeChangedEvent.ts` - Ajout du champ `mode` (automatic/manual) aux plantations et du type d'événement `mode_changed`
+- `1700000015000-SeedSensorReadingsForChampManiocNord.ts` - Ajout de 48 lectures de capteurs (une toutes les 30 minutes sur 24h) pour la plantation "Champ de manioc Nord" de l'utilisateur Pauline Ndoumbé
 
 ### `/src/models`
 Contient les entités TypeORM :
@@ -185,6 +186,8 @@ Contient les utilitaires :
 
 Créez un fichier `.env` à la racine du projet avec les variables suivantes :
 
+> 📧 **Configuration Email** : Pour configurer les notifications par email avec Gmail (SMTP), consultez le guide détaillé dans [CONFIGURATION_EMAIL.md](./CONFIGURATION_EMAIL.md)
+
 ```env
 # Base de données
 DATABASE_URL=postgresql://username:password@host:port/database
@@ -202,11 +205,13 @@ NODE_ENV=development
 FRONTEND_URL=http://localhost:5173
 
 # Email (pour les notifications)
-# Option 1: SMTP standard
+# Option 1: SMTP standard (Gmail)
+# IMPORTANT: Pour Gmail, vous devez utiliser un "mot de passe d'application" et non votre mot de passe normal
+# Voir CONFIGURATION_EMAIL.md pour les instructions détaillées
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_USER=votre_email@gmail.com
-SMTP_PASS=votre_mot_de_passe_application
+SMTP_PASS=votre_mot_de_passe_application_gmail
 SMTP_FROM=noreply@camerfarmai.com
 
 # Option 2: SendGrid (alternative)
@@ -312,6 +317,19 @@ Cette migration ajoute 5 notifications WEB non lues supplémentaires pour l'util
 - **5 notifications WEB** : Toutes non lues (`isRead = false`)
 
 **Note** : Cette migration nécessite que l'utilisateur `pauline@example.com` existe dans la base de données.
+
+### Migration `1700000015000-SeedSensorReadingsForChampManiocNord.ts`
+
+Cette migration ajoute des lectures de capteurs pour la plantation "Champ de manioc Nord" de l'utilisateur Pauline Ndoumbé :
+- **48 lectures par capteur** : Une lecture toutes les 30 minutes sur les dernières 24 heures
+- **Valeurs adaptées au manioc** : Températures optimales (25-30°C), humidité du sol (50-70%), etc.
+- **Variations réalistes** : Cycles jour/nuit pour la température et la luminosité, variations progressives pour l'humidité
+- **Types de capteurs supportés** : température, soilMoisture, co2Level, waterLevel, luminosity
+
+**Note** : Cette migration nécessite que :
+- L'utilisateur `pauline@example.com` existe dans la base de données
+- La plantation "Champ de manioc Nord" existe pour cet utilisateur
+- La plantation possède des capteurs (créés automatiquement lors de la création de la plantation)
 
 Pour exécuter toutes les migrations :
 ```bash

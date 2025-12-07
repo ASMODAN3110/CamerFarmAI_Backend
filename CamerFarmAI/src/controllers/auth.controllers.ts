@@ -4,6 +4,8 @@ import { AuthService } from '../services/auth.service';
 import { RegisterDto, LoginDto, UpdateProfileDto } from '../types/auth.types';
 import { validationResult } from 'express-validator';
 import { HttpException } from '../utils/HttpException';
+import { AppDataSource } from '../config/database';
+import { User } from '../models/User.entity';
 
 /**
  * POST /api/v1/auth/register
@@ -104,6 +106,22 @@ export const login = async (req: Request, res: Response) => {
       });
     }
 
+    // Vérifier si le 2FA est activé pour cet utilisateur
+    if (user.twoFactorEnabled) {
+      // Générer un token temporaire pour la vérification 2FA
+      const temporaryToken = AuthService.generateTemporaryToken(user.id);
+
+      return res.status(200).json({
+        success: true,
+        message: 'Authentification 2FA requise',
+        data: {
+          requires2FA: true,
+          temporaryToken,
+        },
+      });
+    }
+
+    // Si 2FA n'est pas activé, procéder avec la connexion normale
     const { accessToken, refreshToken } = AuthService.generateTokens(user);
 
     res.cookie('refreshToken', refreshToken, {
@@ -187,16 +205,31 @@ export const getMe = async (req: Request, res: Response) => {
     });
   }
 
+  // Récupérer l'utilisateur complet pour obtenir le statut 2FA
+  const userRepository = AppDataSource.getRepository(User);
+  const fullUser = await userRepository.findOne({
+    where: { id: user.id },
+    select: ['id', 'phone', 'firstName', 'lastName', 'email', 'role', 'twoFactorEnabled', 'createdAt'],
+  });
+
+  if (!fullUser) {
+    return res.status(404).json({
+      success: false,
+      message: 'Utilisateur non trouvé',
+    });
+  }
+
   return res.json({
     success: true,
     data: {
-      id: user.id,
-      phone: user.phone,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user.email,
-      role: user.role,
-      createdAt: user.createdAt,
+      id: fullUser.id,
+      phone: fullUser.phone,
+      firstName: fullUser.firstName,
+      lastName: fullUser.lastName,
+      email: fullUser.email,
+      role: fullUser.role,
+      twoFactorEnabled: fullUser.twoFactorEnabled,
+      createdAt: fullUser.createdAt,
     },
   });
 };
@@ -319,4 +352,258 @@ export const uploadAvatar = async (req: Request, res: Response) => {
       avatarUrl,
     },
   });
+};
+
+/**
+ * GET /api/v1/auth/2fa/generate
+ * Générer un secret 2FA et un QR code pour l'utilisateur connecté
+ */
+export const generateTwoFactorSecret = async (req: Request, res: Response) => {
+  const user = req.user;
+  if (!user) {
+    return res.status(401).json({
+      success: false,
+      message: 'Utilisateur non authentifié',
+    });
+  }
+
+  try {
+    const { secret, qrCodeUrl } = await AuthService.generateTwoFactorSecret(user.id);
+
+    return res.json({
+      success: true,
+      message: 'Secret 2FA généré avec succès',
+      data: {
+        secret,
+        qrCodeUrl,
+      },
+    });
+  } catch (error: any) {
+    console.error('Erreur génération secret 2FA:', error);
+
+    if (error instanceof HttpException) {
+      return res.status(error.statusCode).json({
+        success: false,
+        message: error.message,
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: error?.message || 'Erreur serveur lors de la génération du secret 2FA',
+    });
+  }
+};
+
+/**
+ * POST /api/v1/auth/2fa/enable
+ * Activer le 2FA pour l'utilisateur connecté
+ */
+export const enableTwoFactor = async (req: Request, res: Response) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: 'Données invalides',
+      errors: errors.array(),
+    });
+  }
+
+  const user = req.user;
+  if (!user) {
+    return res.status(401).json({
+      success: false,
+      message: 'Utilisateur non authentifié',
+    });
+  }
+
+  const { token } = req.body;
+
+  try {
+    const updatedUser = await AuthService.enableTwoFactor(user.id, token);
+
+    return res.json({
+      success: true,
+      message: '2FA activé avec succès',
+      data: {
+        twoFactorEnabled: updatedUser.twoFactorEnabled,
+      },
+    });
+  } catch (error: any) {
+    console.error('Erreur activation 2FA:', error);
+
+    if (error instanceof HttpException) {
+      return res.status(error.statusCode).json({
+        success: false,
+        message: error.message,
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: error?.message || 'Erreur serveur lors de l\'activation du 2FA',
+    });
+  }
+};
+
+/**
+ * POST /api/v1/auth/2fa/disable
+ * Désactiver le 2FA pour l'utilisateur connecté
+ */
+export const disableTwoFactor = async (req: Request, res: Response) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: 'Données invalides',
+      errors: errors.array(),
+    });
+  }
+
+  const user = req.user;
+  if (!user) {
+    return res.status(401).json({
+      success: false,
+      message: 'Utilisateur non authentifié',
+    });
+  }
+
+  const { token } = req.body;
+
+  try {
+    const updatedUser = await AuthService.disableTwoFactor(user.id, token);
+
+    return res.json({
+      success: true,
+      message: '2FA désactivé avec succès',
+      data: {
+        twoFactorEnabled: updatedUser.twoFactorEnabled,
+      },
+    });
+  } catch (error: any) {
+    console.error('Erreur désactivation 2FA:', error);
+
+    if (error instanceof HttpException) {
+      return res.status(error.statusCode).json({
+        success: false,
+        message: error.message,
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: error?.message || 'Erreur serveur lors de la désactivation du 2FA',
+    });
+  }
+};
+
+/**
+ * POST /api/v1/auth/login/verify-2fa
+ * Vérifier le code 2FA et compléter la connexion
+ */
+export const verifyTwoFactorLogin = async (req: Request, res: Response) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: 'Données invalides',
+      errors: errors.array(),
+    });
+  }
+
+  const { temporaryToken, twoFactorCode } = req.body;
+
+  if (!temporaryToken) {
+    return res.status(400).json({
+      success: false,
+      message: 'Token temporaire requis',
+    });
+  }
+
+  try {
+    // Vérifier et décoder le token temporaire
+    const tokenData = AuthService.verifyTemporaryToken(temporaryToken);
+    if (!tokenData) {
+      return res.status(401).json({
+        success: false,
+        message: 'Token temporaire invalide ou expiré',
+      });
+    }
+
+    // Récupérer l'utilisateur avec le secret 2FA
+    const userRepository = AppDataSource.getRepository(User);
+    const user = await userRepository.findOne({
+      where: { id: tokenData.userId },
+      select: ['id', 'phone', 'firstName', 'lastName', 'email', 'role', 'twoFactorSecret', 'twoFactorEnabled'],
+    });
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Utilisateur non trouvé',
+      });
+    }
+
+    if (!user.twoFactorEnabled) {
+      return res.status(400).json({
+        success: false,
+        message: 'Le 2FA n\'est pas activé pour cet utilisateur',
+      });
+    }
+
+    if (!user.twoFactorSecret) {
+      return res.status(400).json({
+        success: false,
+        message: 'Aucun secret 2FA trouvé',
+      });
+    }
+
+    // Vérifier le code 2FA
+    const isValid = AuthService.verifyTwoFactorToken(user.twoFactorSecret, twoFactorCode);
+    if (!isValid) {
+      return res.status(401).json({
+        success: false,
+        message: 'Code 2FA invalide',
+      });
+    }
+
+    // Générer les tokens finaux
+    const { accessToken, refreshToken } = AuthService.generateTokens(user);
+
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Connexion réussie',
+      data: {
+        user: {
+          id: user.id,
+          phone: user.phone,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          role: user.role,
+        },
+        accessToken,
+      },
+    });
+  } catch (error: any) {
+    console.error('Erreur vérification 2FA:', error);
+
+    if (error instanceof HttpException) {
+      return res.status(error.statusCode).json({
+        success: false,
+        message: error.message,
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: error?.message || 'Erreur serveur lors de la vérification 2FA',
+    });
+  }
 };
