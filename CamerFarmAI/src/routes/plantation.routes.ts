@@ -3,6 +3,8 @@ import { Router } from 'express';
 import * as plantationController from '../controllers/plantation.controller';
 import { protectRoute, restrictTo } from '../middleware/auth.middleware';
 import { UserRole } from '../models/User.entity';
+import { validateUUID, validateMultipleUUIDs } from '../middleware/validation.middleware';
+import { sanitizePlantationInput, sanitizeSensorInput, sanitizeActuatorInput } from '../middleware/sanitize.middleware';
 
 const router = Router();
 
@@ -10,26 +12,26 @@ const router = Router();
 router.use(protectRoute);
 
 // CRUD Plantation (agriculteur peut gérer ses champs)
-router.post('/', plantationController.create);
+router.post('/', sanitizePlantationInput, plantationController.create);
 router.get('/my', plantationController.getMyPlantations);
-router.get('/:id', plantationController.getOne);
-router.patch('/:id', plantationController.update);
-router.delete('/:id', plantationController.remove);
+router.get('/:id', validateUUID('id'), plantationController.getOne);
+router.patch('/:id', validateUUID('id'), sanitizePlantationInput, plantationController.update);
+router.delete('/:id', validateUUID('id'), plantationController.remove);
 
 // Gestion des capteurs
-router.post('/:id/sensors', plantationController.createSensor);
-router.get('/:id/sensors', plantationController.getSensors);
-router.patch('/:id/sensors/:sensorId', plantationController.updateSensor);
-router.patch('/:id/sensors/:sensorId/thresholds', plantationController.updateSensorThresholds);
+router.post('/:id/sensors', validateUUID('id'), sanitizeSensorInput, plantationController.createSensor);
+router.get('/:id/sensors', validateUUID('id'), plantationController.getSensors);
+router.patch('/:id/sensors/:sensorId', validateMultipleUUIDs(['id', 'sensorId']), sanitizeSensorInput, plantationController.updateSensor);
+router.patch('/:id/sensors/:sensorId/thresholds', validateMultipleUUIDs(['id', 'sensorId']), plantationController.updateSensorThresholds);
 
 // Gestion des lectures de capteurs
-router.post('/:id/sensors/:sensorId/readings', plantationController.addSensorReading);
-router.get('/:id/sensors/:sensorId/readings', plantationController.getSensorReadings);
+router.post('/:id/sensors/:sensorId/readings', validateMultipleUUIDs(['id', 'sensorId']), plantationController.addSensorReading);
+router.get('/:id/sensors/:sensorId/readings', validateMultipleUUIDs(['id', 'sensorId']), plantationController.getSensorReadings);
 
 // Gestion des actionneurs
-router.post('/:id/actuators', plantationController.addActuator);
-router.get('/:id/actuators', plantationController.getActuators);
-router.patch('/:id/actuators/:actuatorId', plantationController.updateActuator);
+router.post('/:id/actuators', validateUUID('id'), sanitizeActuatorInput, plantationController.addActuator);
+router.get('/:id/actuators', validateUUID('id'), plantationController.getActuators);
+router.patch('/:id/actuators/:actuatorId', validateMultipleUUIDs(['id', 'actuatorId']), sanitizeActuatorInput, plantationController.updateActuator);
 
 // Conseiller/admin peut tout voir
 router.get('/', restrictTo(UserRole.TECHNICIAN, UserRole.ADMIN), plantationController.getAll);

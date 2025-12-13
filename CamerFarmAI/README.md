@@ -348,6 +348,7 @@ npm run dev              # Démarrer le serveur en mode développement
 npm run migration:run    # Exécuter les migrations
 npm run migration:revert # Annuler la dernière migration
 npm run migration:generate # Générer une nouvelle migration
+npm run test:email      # Tester la configuration email (SMTP)
 ```
 
 ## API Endpoints
