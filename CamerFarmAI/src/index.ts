@@ -18,13 +18,40 @@ import notificationRouter from './routes/notification.routes';
 // Importer la configuration de la base de données
 import { AppDataSource } from './config/database';
 
+// Middlewares de sécurité
+import { generalRateLimiter } from './middleware/rateLimit.middleware';
+import { securityHeaders, logSecurityEvents, validateOrigin, requestSizeLimiter } from './middleware/security.middleware';
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middlewares de sécurité et configuration
 app.use(helmet({
-  crossOriginResourcePolicy: { policy: "cross-origin" }
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'"],
+      imgSrc: ["'self'", "data:", "https:"],
+    },
+  },
 }));  // Sécurité headers avec support CORS
+
+// Headers de sécurité supplémentaires
+app.use(securityHeaders);
+
+// Validation de l'origine
+app.use(validateOrigin);
+
+// Rate limiting général
+app.use(generalRateLimiter);
+
+// Limite de taille des requêtes (10MB par défaut)
+app.use(requestSizeLimiter('10mb'));
+
+// Logging des événements de sécurité
+app.use(logSecurityEvents);
 
 // Configuration CORS pour permettre les cookies depuis le frontend
 app.use(cors({
@@ -34,7 +61,8 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
-app.use(bodyParser.json());
+app.use(bodyParser.json({ limit: '10mb' }));
+app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());  // Pour lire les cookies
 
 // Servir les fichiers uploadés (avatars, etc.)

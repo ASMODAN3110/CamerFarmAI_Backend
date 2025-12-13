@@ -52,16 +52,6 @@ export class EventService {
       });
       notifications.push(webNotification);
 
-      // Notification Email (si l'utilisateur a un email)
-      if (user.email) {
-        const emailNotification = notificationRepository.create({
-          canal: NotificationCanal.EMAIL,
-          eventId: event.id,
-          userId: user.id,
-        });
-        notifications.push(emailNotification);
-      }
-
       // Notification WhatsApp (si l'utilisateur a un téléphone)
       if (user.phone) {
         const whatsappNotification = notificationRepository.create({

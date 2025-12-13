@@ -51,16 +51,66 @@ Ce guide vous explique comment configurer les notifications email avec Gmail (SM
 
 ### Étape 4 : Tester la configuration
 
+#### Option A : Test automatique (Recommandé)
+
+Utilisez le script de test intégré :
+
+```bash
+npm run test:email
+```
+
+Ce script va :
+- ✅ Vérifier que toutes les variables d'environnement sont configurées
+- ✅ Tester la connexion à la base de données
+- ✅ Créer un événement de test
+- ✅ Envoyer un email de test
+- ✅ Afficher le résultat
+
+**Résultat attendu :**
+```
+✅ EMAIL ENVOYÉ AVEC SUCCÈS !
+📧 Vérifiez la boîte de réception de: votre_email@gmail.com
+```
+
+#### Option B : Test manuel via l'application
+
 1. Redémarrez votre serveur :
    ```bash
    npm run dev
    ```
 
-2. Créez un événement qui déclenche une notification (par exemple, changez le mode d'une plantation)
+2. Créez un événement qui déclenche une notification :
+   - **Via l'API** : Changez le mode d'une plantation (PATCH `/api/v1/plantations/:id` avec `mode: "manual"`)
+   - **Via l'interface** : Utilisez le frontend pour changer le mode d'une plantation
 
 3. Vérifiez les logs du serveur pour voir si l'email a été envoyé
 
 4. Vérifiez votre boîte de réception (et les spams si nécessaire)
+
+#### Option C : Vérifier dans la base de données
+
+Vous pouvez vérifier le statut des notifications dans la table `notifications` :
+
+```sql
+SELECT 
+  n.id,
+  n.canal,
+  n.statut,
+  n."dateEnvoi",
+  e.description,
+  u.email
+FROM notifications n
+JOIN events e ON e.id = n."eventId"
+JOIN users u ON u.id = n."userId"
+WHERE n.canal = 'email'
+ORDER BY n."dateEnvoi" DESC
+LIMIT 10;
+```
+
+Les statuts possibles :
+- `en_attente` : Notification créée mais pas encore envoyée
+- `envoyee` : Email envoyé avec succès ✅
+- `erreur` : Erreur lors de l'envoi ❌
 
 ## 🔍 Dépannage
 
