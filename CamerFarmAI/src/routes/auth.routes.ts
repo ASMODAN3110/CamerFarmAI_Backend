@@ -4,12 +4,6 @@ import * as authController from '../controllers/auth.controllers';
 import { protectRoute } from '../middleware/auth.middleware';
 import { body } from 'express-validator';
 import { avatarUpload } from '../middleware/upload.middleware';
-import { 
-  authRateLimiter, 
-  refreshTokenRateLimiter, 
-  twoFactorRateLimiter,
-  registerRateLimiter 
-} from '../middleware/rateLimit.middleware';
 import { sanitizeInput } from '../middleware/sanitize.middleware';
 
 const authRouter = Router();
@@ -97,7 +91,7 @@ const validateUpdateProfile = [
  * @SRS     EF-07 - Sécurité et Gestion des Utilisateurs
  * @Jira    CA-40, CA-41
  */
-authRouter.post('/register', registerRateLimiter, validateRegister, sanitizeInput, authController.register);
+authRouter.post('/register', validateRegister, sanitizeInput, authController.register);
 
 /**
  * @route   POST /api/v1/auth/login
@@ -106,7 +100,7 @@ authRouter.post('/register', registerRateLimiter, validateRegister, sanitizeInpu
  * @SRS     EF-07
  * @Jira    CA-40
  */
-authRouter.post('/login', authRateLimiter, validateLogin, sanitizeInput, authController.login);
+authRouter.post('/login', validateLogin, sanitizeInput, authController.login);
 
 // Middleware de validation pour la vérification 2FA lors de la connexion
 const validateVerify2FA = [
@@ -133,7 +127,7 @@ const validateVerify2FA = [
  * @SRS     EF-07
  * @Jira    CA-40
  */
-authRouter.post('/login/verify-2fa', twoFactorRateLimiter, validateVerify2FA, authController.verifyTwoFactorLogin);
+authRouter.post('/login/verify-2fa', validateVerify2FA, authController.verifyTwoFactorLogin);
 
 /**
  * @route   POST /api/v1/auth/refresh
@@ -141,7 +135,7 @@ authRouter.post('/login/verify-2fa', twoFactorRateLimiter, validateVerify2FA, au
  * @access  Public (mais vérifie le cookie refreshToken)
  * @Jira    CA-40
  */
-authRouter.post('/refresh', refreshTokenRateLimiter, authController.refresh);
+authRouter.post('/refresh', authController.refresh);
 
 /**
  * @route   GET /api/v1/auth/me
@@ -205,14 +199,14 @@ const validateTwoFactorToken = [
  * @desc    Activer le 2FA pour l'utilisateur connecté
  * @access  Privé (protégé par JWT)
  */
-authRouter.post('/2fa/enable', protectRoute, twoFactorRateLimiter, validateTwoFactorToken, authController.enableTwoFactor);
+authRouter.post('/2fa/enable', protectRoute, validateTwoFactorToken, authController.enableTwoFactor);
 
 /**
  * @route   POST /api/v1/auth/2fa/disable
  * @desc    Désactiver le 2FA pour l'utilisateur connecté
  * @access  Privé (protégé par JWT)
  */
-authRouter.post('/2fa/disable', protectRoute, twoFactorRateLimiter, validateTwoFactorToken, authController.disableTwoFactor);
+authRouter.post('/2fa/disable', protectRoute, validateTwoFactorToken, authController.disableTwoFactor);
 
 /**
  * @route   POST /api/v1/auth/forgot-password

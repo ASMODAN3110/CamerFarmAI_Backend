@@ -19,7 +19,6 @@ import notificationRouter from './routes/notification.routes';
 import { AppDataSource } from './config/database';
 
 // Middlewares de sécurité
-import { generalRateLimiter } from './middleware/rateLimit.middleware';
 import { securityHeaders, logSecurityEvents, validateOrigin, requestSizeLimiter } from './middleware/security.middleware';
 
 const app = express();
@@ -43,9 +42,6 @@ app.use(securityHeaders);
 
 // Validation de l'origine
 app.use(validateOrigin);
-
-// Rate limiting général
-app.use(generalRateLimiter);
 
 // Limite de taille des requêtes (10MB par défaut)
 app.use(requestSizeLimiter('10mb'));
