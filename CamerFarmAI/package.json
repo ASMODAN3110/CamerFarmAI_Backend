@@ -8,7 +8,10 @@
     "typeorm": "ts-node ./node_modules/typeorm/cli",
     "migration:generate": "npm run typeorm -- migration:generate -d src/config/database.ts",
     "migration:run": "npm run typeorm -- migration:run -d src/config/database.ts",
-    "migration:revert": "npm run typeorm -- migration:revert -d src/config/database.ts"
+    "migration:revert": "npm run typeorm -- migration:revert -d src/config/database.ts",
+    "seed:sensors": "ts-node src/scripts/seed-sensor-readings.ts",
+    "seed:fakers": "ts-node src/scripts/generate-fakers.ts",
+    "test:fakers": "ts-node src/scripts/test-fakers.ts"
   },
   "keywords": [],
   "author": "",
@@ -41,7 +44,8 @@
     "twilio": "^5.0.0",
     "typeorm": "^0.3.27",
     "typescript": "^5.9.3",
-    "validator": "^13.15.23"
+    "validator": "^13.15.23",
+    "@faker-js/faker": "^8.4.1"
   },
   "devDependencies": {
     "@types/body-parser": "^1.19.6",

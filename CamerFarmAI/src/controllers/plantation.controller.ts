@@ -385,24 +385,23 @@ export const updateSensorThresholds = async (req: Request, res: Response) => {
     return res.status(404).json({ message: 'Capteur non trouvé' });
   }
 
+  // Les valeurs sont déjà validées par le middleware validateSensorThresholds
   const { seuilMin, seuilMax }: UpdateSensorThresholdPayload = req.body;
-
-  if (seuilMin === undefined || seuilMax === undefined) {
-    return res.status(400).json({
-      message: 'Les champs seuilMin et seuilMax sont obligatoires.',
-    });
-  }
-
-  if (typeof seuilMin !== 'number' || typeof seuilMax !== 'number') {
-    return res.status(400).json({
-      message: 'Les seuils doivent être des nombres.',
-    });
-  }
 
   try {
     sensor.modifierSeuil(seuilMin, seuilMax);
     await sensorRepo.save(sensor);
-    return res.json(sensor);
+    
+    return res.json({
+      id: sensor.id,
+      type: sensor.type,
+      status: sensor.status,
+      seuilMin: sensor.seuilMin,
+      seuilMax: sensor.seuilMax,
+      plantationId: sensor.plantationId,
+      createdAt: sensor.createdAt,
+      updatedAt: sensor.updatedAt,
+    });
   } catch (error: any) {
     return res.status(400).json({
       message: error.message || 'Erreur lors de la modification des seuils.',
