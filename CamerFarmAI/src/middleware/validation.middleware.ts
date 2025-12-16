@@ -1,6 +1,6 @@
 // src/middleware/validation.middleware.ts
 import { Request, Response, NextFunction } from 'express';
-import { param, validationResult } from 'express-validator';
+import { param, body, validationResult } from 'express-validator';
 import validator from 'validator';
 
 /**
@@ -80,4 +80,41 @@ export const validateQueryParams = (paramNames: string[]) => {
     },
   ];
 };
+
+/**
+ * Middleware pour valider les seuils de capteurs (seuilMin et seuilMax)
+ */
+export const validateSensorThresholds = [
+  body('seuilMin')
+    .notEmpty()
+    .withMessage('Le seuil minimum est requis')
+    .isFloat({ min: 0 })
+    .withMessage('Le seuil minimum doit être un nombre décimal positif')
+    .toFloat(),
+  body('seuilMax')
+    .notEmpty()
+    .withMessage('Le seuil maximum est requis')
+    .isFloat({ min: 0 })
+    .withMessage('Le seuil maximum doit être un nombre décimal positif')
+    .toFloat()
+    .custom((value, { req }) => {
+      const seuilMin = req.body.seuilMin;
+      if (seuilMin !== undefined && value <= seuilMin) {
+        throw new Error('Le seuil maximum doit être strictement supérieur au seuil minimum');
+      }
+      return true;
+    }),
+  (req: Request, res: Response, next: NextFunction): void => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({
+        success: false,
+        message: 'Données de seuils invalides',
+        errors: errors.array(),
+      });
+      return;
+    }
+    next();
+  },
+];
 

@@ -3,7 +3,7 @@ import { Router } from 'express';
 import * as plantationController from '../controllers/plantation.controller';
 import { protectRoute, restrictTo } from '../middleware/auth.middleware';
 import { UserRole } from '../models/User.entity';
-import { validateUUID, validateMultipleUUIDs } from '../middleware/validation.middleware';
+import { validateUUID, validateMultipleUUIDs, validateSensorThresholds } from '../middleware/validation.middleware';
 import { sanitizePlantationInput, sanitizeSensorInput, sanitizeActuatorInput } from '../middleware/sanitize.middleware';
 
 const router = Router();
@@ -22,7 +22,7 @@ router.delete('/:id', validateUUID('id'), plantationController.remove);
 router.post('/:id/sensors', validateUUID('id'), sanitizeSensorInput, plantationController.createSensor);
 router.get('/:id/sensors', validateUUID('id'), plantationController.getSensors);
 router.patch('/:id/sensors/:sensorId', validateMultipleUUIDs(['id', 'sensorId']), sanitizeSensorInput, plantationController.updateSensor);
-router.patch('/:id/sensors/:sensorId/thresholds', validateMultipleUUIDs(['id', 'sensorId']), plantationController.updateSensorThresholds);
+router.patch('/:id/sensors/:sensorId/thresholds', validateMultipleUUIDs(['id', 'sensorId']), validateSensorThresholds, restrictTo(UserRole.FARMER), plantationController.updateSensorThresholds);
 
 // Gestion des lectures de capteurs
 router.post('/:id/sensors/:sensorId/readings', validateMultipleUUIDs(['id', 'sensorId']), plantationController.addSensorReading);
