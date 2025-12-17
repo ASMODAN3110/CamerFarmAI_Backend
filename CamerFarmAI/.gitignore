@@ -1,20 +1,37 @@
-# Dépendances et caches Node
+# ============================================
+# Dépendances Node.js
+# ============================================
 node_modules/
-package-lock.json
+.pnp
+.pnp.js
+
+# Lock files (garder package-lock.json pour la reproductibilité)
+# package-lock.json  # À garder versionné
 pnpm-lock.yaml
 yarn.lock
-*.tsbuildinfo
 
-# Builds et artefacts compilés
+# ============================================
+# Builds et artefacts compilés TypeScript
+# ============================================
 dist/
 build/
-coverage/
-.nyc_output/
+*.tsbuildinfo
+
+# Fichiers JavaScript compilés depuis TypeScript
 src/**/*.js
 src/**/*.js.map
 src/**/*.d.ts
 
+# Fichiers compilés à la racine
+*.js
+*.js.map
+*.d.ts
+!package.json
+!tsconfig.json
+
+# ============================================
 # Logs et rapports
+# ============================================
 logs/
 *.log
 npm-debug.log*
@@ -23,7 +40,9 @@ yarn-error.log*
 lerna-debug.log*
 .pnpm-debug.log*
 
+# ============================================
 # Environnements et secrets
+# ============================================
 .env
 .env.*
 .env.local
@@ -31,8 +50,11 @@ lerna-debug.log*
 .env.test.local
 .env.production.local
 .env.backup
+.env.example.local
 
+# ============================================
 # Bases de données et dumps locaux
+# ============================================
 *.sqlite
 *.sqlite3
 *.db
@@ -41,33 +63,9 @@ lerna-debug.log*
 *.backup
 *.pg_dump
 
-# Outils, IDE et OS
-.idea/
-.vscode/
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-desktop.ini
-*.swp
-*.swo
-*.sublime-project
-*.sublime-workspace
-.project
-.classpath
-.settings/
-
-# Fichiers temporaires / caches
-tmp/
-temp/
-*.tmp
-*.temp
-.cache/
-.parcel-cache/
-.temp/
-
-# Uploads et sorties locales
+# ============================================
+# Uploads et fichiers utilisateur
+# ============================================
 uploads/
 uploads/avatars/
 public/uploads/
@@ -76,14 +74,19 @@ sessions/
 # Note: Les fichiers uploads/avatars/ sont ignorés mais le dossier peut être créé
 # pour permettre l'upload de fichiers. Les fichiers uploadés ne seront pas versionnés.
 
-# Fichiers de documentation générés
-docs/build/
+# ============================================
+# Tests et couverture de code
+# ============================================
+coverage/
+.nyc_output/
+*.lcov
+.jest/
+test-results/
+playwright-report/
 
-# Configurations locales sensibles
-config/local.json
-config/local.js
-
+# ============================================
 # TypeORM
+# ============================================
 ormconfig.json
 ormconfig.js
 ormconfig.*.json
@@ -93,6 +96,72 @@ ormconfig.*.js
 src/migrations/*.js
 src/migrations/*.js.map
 
-# Fichiers de build TypeScript
-*.js.map
-*.d.ts
+# ============================================
+# IDE et éditeurs
+# ============================================
+.idea/
+.vscode/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+.project
+.classpath
+.settings/
+*.code-workspace
+
+# ============================================
+# Système d'exploitation
+# ============================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+desktop.ini
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ============================================
+# Fichiers temporaires et caches
+# ============================================
+tmp/
+temp/
+*.tmp
+*.temp
+.cache/
+.parcel-cache/
+.temp/
+.eslintcache
+.stylelintcache
+
+# ============================================
+# Configurations locales sensibles
+# ============================================
+config/local.json
+config/local.js
+config/*.local.*
+
+# ============================================
+# Documentation générée
+# ============================================
+docs/build/
+docs/.vuepress/dist/
+
+# ============================================
+# Fichiers de sauvegarde et temporaires
+# ============================================
+*.bak
+*.swp
+*~
+.#*
+\#*#
+.*.sw?
+
+# ============================================
+# Fichiers spécifiques au projet
+# ============================================
+# Fichiers TypeScript obsolètes à la racine
+app.ts
+*.ts.bak

@@ -33,7 +33,7 @@ router.post('/:id/actuators', validateUUID('id'), sanitizeActuatorInput, plantat
 router.get('/:id/actuators', validateUUID('id'), plantationController.getActuators);
 router.patch('/:id/actuators/:actuatorId', validateMultipleUUIDs(['id', 'actuatorId']), sanitizeActuatorInput, plantationController.updateActuator);
 
-// Conseiller/admin peut tout voir
+// Technicien/admin peut tout voir
 router.get('/', restrictTo(UserRole.TECHNICIAN, UserRole.ADMIN), plantationController.getAll);
 
 export default router;

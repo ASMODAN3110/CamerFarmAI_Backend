@@ -9,7 +9,7 @@ import { User } from '../models/User.entity';
 
 /**
  * POST /api/v1/auth/register
- * Inscription d’un nouvel agriculteur (ou conseiller/admin plus tard)
+ * Inscription d'un nouvel agriculteur (ou technicien/admin plus tard)
  */
 export const register = async (req: Request, res: Response) => {
   const errors = validationResult(req);

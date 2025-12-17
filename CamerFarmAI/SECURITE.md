@@ -4,15 +4,12 @@ Ce document décrit les mesures de sécurité implémentées dans l'application 
 
 ## 🔒 Mesures de Sécurité Implémentées
 
-### 1. Rate Limiting (Protection contre les attaques par force brute)
+### 1. Rate Limiting
 
-**Fichier**: `src/middleware/rateLimit.middleware.ts`
-
-- **Rate limiter général** : 100 requêtes par IP toutes les 15 minutes
-- **Rate limiter authentification** : 5 tentatives de connexion par IP toutes les 15 minutes
-- **Rate limiter refresh token** : 10 refresh par IP toutes les 15 minutes
-- **Rate limiter 2FA** : 5 tentatives de vérification 2FA toutes les 15 minutes
-- **Rate limiter inscription** : 3 inscriptions par IP par heure
+**Note** : Le rate limiting n'est pas encore implémenté dans une version avancée. Les protections de base sont assurées par :
+- Limite de taille des requêtes (10MB)
+- Validation stricte des données
+- Logging des tentatives d'accès non autorisées
 
 ### 2. Validation des Paramètres
 
@@ -135,8 +132,8 @@ Ce document décrit les mesures de sécurité implémentées dans l'application 
 - ✅ **Logging** : Enregistrement des tentatives échouées
 
 ### DDoS
-- ✅ **Rate limiting général** : 100 requêtes/IP/15min
 - ✅ **Limite de taille** : 10MB max par requête
+- ✅ **Validation d'origine** : Vérification de l'origine des requêtes
 
 ## 🔐 Variables d'Environnement Sécurisées
 
