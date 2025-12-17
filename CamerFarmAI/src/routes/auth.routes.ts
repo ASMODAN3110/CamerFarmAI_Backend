@@ -86,7 +86,7 @@ const validateUpdateProfile = [
 
 /**
  * @route   POST /api/v1/auth/register
- * @desc    Inscription d'un nouvel utilisateur (agriculteur, conseiller, admin)
+ * @desc    Inscription d'un nouvel utilisateur (agriculteur, technicien, admin)
  * @access  Public
  * @SRS     EF-07 - Sécurité et Gestion des Utilisateurs
  * @Jira    CA-40, CA-41
