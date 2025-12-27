@@ -208,6 +208,7 @@ npm run seed:mais          # Générer des données de capteurs pour la plantati
 - Génération d'événements lorsque les seuils sont dépassés
 - Historique des lectures (100 dernières)
 - **Gestion automatique des statuts** : Les capteurs passent automatiquement à `INACTIVE` s'ils n'envoient pas de valeur depuis 1 heure, et redeviennent `ACTIVE` dès qu'ils envoient une nouvelle valeur
+- **Notifications de changement de statut** : Le propriétaire de la plantation reçoit automatiquement des notifications (WEB, WHATSAPP, EMAIL) lorsque ses capteurs changent de statut (ACTIVE ↔ INACTIVE)
 
 ### Actionneurs
 - Types : pompe, ventilateur, éclairage
@@ -215,7 +216,7 @@ npm run seed:mais          # Générer des données de capteurs pour la plantati
 - Génération d'événements lors des changements de statut
 
 ### Événements
-- Types : seuil dépassé, actionneur activé/désactivé, changement de mode
+- Types : seuil dépassé, actionneur activé/désactivé, changement de mode, capteur actif/inactif
 - Association automatique aux notifications
 
 ### Notifications
@@ -382,6 +383,7 @@ Consultez [SECURITE.md](./SECURITE.md) pour plus de détails.
 - [CONFIGURATION_EMAIL.md](./CONFIGURATION_EMAIL.md) - Guide de configuration SMTP Gmail
 - [SECURITE.md](./SECURITE.md) - Mesures de sécurité détaillées
 - [DOCUMENTATION_FRONTEND_SENSOR_STATUS.md](./DOCUMENTATION_FRONTEND_SENSOR_STATUS.md) - Documentation complète pour le frontend sur la gestion automatique des statuts des capteurs
+- [DOCUMENTATION_FRONTEND_NOTIFICATIONS_SENSOR_STATUS.md](./DOCUMENTATION_FRONTEND_NOTIFICATIONS_SENSOR_STATUS.md) - Documentation complète pour le frontend sur les notifications de changement de statut des capteurs
 
 ## Contribution
 

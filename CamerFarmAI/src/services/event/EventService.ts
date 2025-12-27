@@ -4,6 +4,8 @@ import { Event, EventType } from '../../models/Event.entity';
 import { Notification, NotificationCanal } from '../../models/Notification.entity';
 import { User } from '../../models/User.entity';
 import { NotificationServiceFactory } from '../notification/NotificationServiceFactory';
+import { Sensor, SensorStatus } from '../../models/Sensor.entity';
+import { Plantation } from '../../models/Plantation.entity';
 
 export class EventService {
   /**
@@ -108,6 +110,32 @@ export class EventService {
     }
 
     return null;
+  }
+
+  /**
+   * Crée un événement et envoie des notifications lorsqu'un capteur change de statut
+   */
+  static async notifySensorStatusChange(
+    sensor: Sensor,
+    newStatus: SensorStatus,
+    plantation: Plantation
+  ): Promise<void> {
+    let eventType: EventType;
+    let description: string;
+    
+    if (newStatus === SensorStatus.ACTIVE) {
+      eventType = EventType.SENSOR_ACTIVE;
+      description = `Le capteur ${sensor.type} du champ "${plantation.name}" est maintenant actif`;
+    } else {
+      eventType = EventType.SENSOR_INACTIVE;
+      description = `Le capteur ${sensor.type} du champ "${plantation.name}" est devenu inactif (aucune lecture depuis plus d'1 heure)`;
+    }
+    
+    // Créer l'événement
+    const event = await this.createEvent(eventType, description, sensor.id);
+    
+    // Envoyer les notifications au propriétaire de la plantation
+    await this.processEvent(event, [plantation.ownerId]);
   }
 }
 

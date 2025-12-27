@@ -137,6 +137,16 @@ const updateSensorStatuses = async (plantationId: string) => {
   const sensorReadingRepo = getSensorReadingRepo();
   const { SensorStatus } = getSensorModule();
 
+  // Récupérer la plantation avec son propriétaire pour les notifications
+  const plantation = await plantationRepo.findOne({
+    where: { id: plantationId },
+    relations: ['owner'],
+  });
+
+  if (!plantation) {
+    return;
+  }
+
   // Récupérer tous les capteurs de la plantation
   const sensors = await sensorRepo.find({
     where: { plantationId },
@@ -150,6 +160,9 @@ const updateSensorStatuses = async (plantationId: string) => {
 
   // Mettre à jour les statuts des capteurs
   for (const sensor of sensors) {
+    // Stocker l'ancien statut pour détecter les changements
+    const oldStatus = sensor.status;
+
     // Récupérer la dernière lecture du capteur
     const latestReading = await sensorReadingRepo.findOne({
       where: { sensorId: sensor.id },
@@ -162,12 +175,32 @@ const updateSensorStatuses = async (plantationId: string) => {
         if (sensor.status !== SensorStatus.INACTIVE) {
           sensor.status = SensorStatus.INACTIVE;
           await sensorRepo.save(sensor);
+          
+          // Créer un événement et envoyer une notification si le statut a changé
+          if (oldStatus !== SensorStatus.INACTIVE) {
+            try {
+              const { EventService } = require('../services/event/EventService');
+              await EventService.notifySensorStatusChange(sensor, SensorStatus.INACTIVE, plantation);
+            } catch (error) {
+              console.error('Erreur lors de la création de la notification de changement de statut:', error);
+            }
+          }
         }
       } else {
         // Si la dernière lecture est récente, s'assurer que le capteur est actif
         if (sensor.status !== SensorStatus.ACTIVE) {
           sensor.status = SensorStatus.ACTIVE;
           await sensorRepo.save(sensor);
+          
+          // Créer un événement et envoyer une notification si le statut a changé
+          if (oldStatus !== SensorStatus.ACTIVE) {
+            try {
+              const { EventService } = require('../services/event/EventService');
+              await EventService.notifySensorStatusChange(sensor, SensorStatus.ACTIVE, plantation);
+            } catch (error) {
+              console.error('Erreur lors de la création de la notification de changement de statut:', error);
+            }
+          }
         }
       }
     }
@@ -429,6 +462,9 @@ export const updateSensor = async (req: Request, res: Response) => {
 
   const { status }: UpdateSensorPayload = req.body;
 
+  // Stocker l'ancien statut pour détecter les changements
+  const oldStatus = sensor.status;
+
   if (status !== undefined) {
     if (!Object.values(SensorStatus).includes(status as any)) {
       return res.status(400).json({
@@ -439,6 +475,24 @@ export const updateSensor = async (req: Request, res: Response) => {
   }
 
   await sensorRepo.save(sensor);
+
+  // Créer un événement et envoyer une notification si le statut a changé
+  if (status !== undefined && oldStatus !== sensor.status) {
+    try {
+      // Récupérer la plantation avec son propriétaire pour les notifications
+      const plantationWithOwner = await plantationRepo.findOne({
+        where: { id: plantation.id },
+        relations: ['owner'],
+      });
+      
+      if (plantationWithOwner) {
+        const { EventService } = require('../services/event/EventService');
+        await EventService.notifySensorStatusChange(sensor, sensor.status, plantationWithOwner);
+      }
+    } catch (error) {
+      console.error('Erreur lors de la création de la notification de changement de statut:', error);
+    }
+  }
 
   return res.json(sensor);
 };
@@ -523,9 +577,28 @@ export const addSensorReading = async (req: Request, res: Response) => {
 
   // Activer automatiquement le capteur s'il était inactif
   const { SensorStatus } = getSensorModule();
+  const oldStatus = sensor.status;
   if (sensor.status !== SensorStatus.ACTIVE) {
     sensor.status = SensorStatus.ACTIVE;
     await sensorRepo.save(sensor);
+    
+    // Créer un événement et envoyer une notification si le statut a changé
+    if (oldStatus !== SensorStatus.ACTIVE) {
+      try {
+        // Récupérer la plantation avec son propriétaire pour les notifications
+        const plantationWithOwner = await plantationRepo.findOne({
+          where: { id: plantation.id },
+          relations: ['owner'],
+        });
+        
+        if (plantationWithOwner) {
+          const { EventService } = require('../services/event/EventService');
+          await EventService.notifySensorStatusChange(sensor, SensorStatus.ACTIVE, plantationWithOwner);
+        }
+      } catch (error) {
+        console.error('Erreur lors de la création de la notification de changement de statut:', error);
+      }
+    }
   }
 
   // Vérifier automatiquement les seuils et créer un événement si nécessaire
