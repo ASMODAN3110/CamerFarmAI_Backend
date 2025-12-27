@@ -126,6 +126,54 @@ const findOwnedPlantation = async (plantationId: string, ownerId: string) => {
   });
 };
 
+/**
+ * Met à jour les statuts des capteurs d'une plantation basés sur leur dernière lecture.
+ * Un capteur devient INACTIVE s'il n'a pas reçu de nouvelle lecture depuis 1 heure.
+ * @param plantationId - ID de la plantation
+ */
+const updateSensorStatuses = async (plantationId: string) => {
+  const sensorRepo = getSensorRepo();
+  const sensorReadingRepo = getSensorReadingRepo();
+  const { SensorStatus } = getSensorModule();
+
+  // Récupérer tous les capteurs de la plantation
+  const sensors = await sensorRepo.find({
+    where: { plantationId },
+  });
+
+  if (sensors.length === 0) {
+    return;
+  }
+
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000); // 1 heure en millisecondes
+
+  // Mettre à jour les statuts des capteurs
+  for (const sensor of sensors) {
+    // Récupérer la dernière lecture du capteur
+    const latestReading = await sensorReadingRepo.findOne({
+      where: { sensorId: sensor.id },
+      order: { timestamp: 'DESC' },
+    });
+
+    if (latestReading) {
+      // Si la dernière lecture date de plus d'1 heure, marquer comme inactif
+      if (latestReading.timestamp < oneHourAgo) {
+        if (sensor.status !== SensorStatus.INACTIVE) {
+          sensor.status = SensorStatus.INACTIVE;
+          await sensorRepo.save(sensor);
+        }
+      } else {
+        // Si la dernière lecture est récente, s'assurer que le capteur est actif
+        if (sensor.status !== SensorStatus.ACTIVE) {
+          sensor.status = SensorStatus.ACTIVE;
+          await sensorRepo.save(sensor);
+        }
+      }
+    }
+    // Si le capteur n'a aucune lecture, on le laisse dans son état actuel (par défaut ACTIVE)
+  }
+};
+
 export const create = async (req: Request, res: Response) => {
   const { name, location, area, cropType, coordinates }: CreateOrUpdatePayload = req.body;
   const ownerId = req.user!.id;
@@ -159,6 +207,9 @@ export const getOne = async (req: Request, res: Response) => {
   });
 
   if (!plantation) return res.status(404).json({ message: 'Champ non trouvé' });
+
+  // Mettre à jour les statuts des capteurs avant de les récupérer
+  await updateSensorStatuses(plantation.id);
 
   const sensorRepo = getSensorRepo();
   const sensorReadingRepo = getSensorReadingRepo();
@@ -322,6 +373,9 @@ export const getSensors = async (req: Request, res: Response) => {
     return res.status(404).json({ message: 'Champ non trouvé' });
   }
 
+  // Mettre à jour les statuts des capteurs avant de les récupérer
+  await updateSensorStatuses(plantation.id);
+
   const sensorRepo = getSensorRepo();
   const sensors = await sensorRepo.find({
     where: { plantationId: plantation.id },
@@ -444,6 +498,13 @@ export const addSensorReading = async (req: Request, res: Response) => {
   });
 
   await sensorReadingRepo.save(reading);
+
+  // Activer automatiquement le capteur s'il était inactif
+  const { SensorStatus } = getSensorModule();
+  if (sensor.status !== SensorStatus.ACTIVE) {
+    sensor.status = SensorStatus.ACTIVE;
+    await sensorRepo.save(sensor);
+  }
 
   // Vérifier automatiquement les seuils et créer un événement si nécessaire
   try {
