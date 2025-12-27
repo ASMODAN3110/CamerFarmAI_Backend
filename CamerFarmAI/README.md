@@ -176,6 +176,16 @@ npm run seed:mais          # Générer des données de capteurs pour la plantati
 | PATCH | `/:notificationId/read` | Marquer une notification comme lue | Privé |
 | DELETE | `/:id` | Supprimer une notification | Privé |
 
+### Dashboard Technique (`/api/v1/technician`)
+
+| Méthode | Endpoint | Description | Accès |
+|---------|----------|-------------|-------|
+| GET | `/stats` | Statistiques globales (agriculteurs, champs, capteurs actifs/inactifs, actionneurs) | Privé (TECHNICIAN, ADMIN) |
+| GET | `/farmers` | Lister les agriculteurs avec recherche optionnelle (`?search=terme`) | Privé (TECHNICIAN, ADMIN) |
+| GET | `/farmers/:farmerId/plantations` | Lister les plantations d'un agriculteur spécifique | Privé (TECHNICIAN, ADMIN) |
+
+**Note** : Les statuts des capteurs sont automatiquement mis à jour avant le calcul des statistiques et lors de la récupération des plantations.
+
 ## Fonctionnalités principales
 
 ### Authentification
@@ -357,6 +367,7 @@ Consultez [SECURITE.md](./SECURITE.md) pour plus de détails.
 - [x] Notifications multi-canaux (WEB, EMAIL, WHATSAPP)
 - [x] Upload d'avatar utilisateur
 - [x] Script de génération de données de test (`seed:mais`)
+- [x] Dashboard technique pour les techniciens (statistiques, liste des agriculteurs, champs par agriculteur)
 
 ### 🔄 En cours / À faire
 

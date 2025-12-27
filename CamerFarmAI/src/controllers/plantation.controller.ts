@@ -3,6 +3,7 @@ import { Request, Response } from 'express';
 import { AppDataSource } from '../config/database';
 import { Plantation } from '../models/Plantation.entity';
 import { Actuator, ActuatorStatus } from '../models/Actuator.entity';
+import { UserRole } from '../models/User.entity';
 
 const plantationRepo = AppDataSource.getRepository(Plantation);
 const actuatorRepo = AppDataSource.getRepository(Actuator);
@@ -203,10 +204,21 @@ export const getMyPlantations = async (req: Request, res: Response) => {
 
 export const getOne = async (req: Request, res: Response) => {
   const plantation = await plantationRepo.findOne({
-    where: { id: req.params.id, ownerId: req.user!.id },
+    where: { id: req.params.id },
+    relations: ['owner'],
   });
 
-  if (!plantation) return res.status(404).json({ message: 'Champ non trouvé' });
+  if (!plantation) {
+    return res.status(404).json({ message: 'Champ non trouvé' });
+  }
+
+  // Vérifier les permissions : propriétaire, technicien ou admin
+  const isOwner = plantation.ownerId === req.user!.id;
+  const isTechnicianOrAdmin = req.user!.role === UserRole.TECHNICIAN || req.user!.role === UserRole.ADMIN;
+
+  if (!isOwner && !isTechnicianOrAdmin) {
+    return res.status(403).json({ message: 'Accès interdit' });
+  }
 
   // Mettre à jour les statuts des capteurs avant de les récupérer
   await updateSensorStatuses(plantation.id);
@@ -366,11 +378,21 @@ export const createSensor = async (req: Request, res: Response) => {
 
 export const getSensors = async (req: Request, res: Response) => {
   const { id } = req.params;
-  const ownerId = req.user!.id;
 
-  const plantation = await findOwnedPlantation(id, ownerId);
+  const plantation = await plantationRepo.findOne({
+    where: { id },
+  });
+
   if (!plantation) {
     return res.status(404).json({ message: 'Champ non trouvé' });
+  }
+
+  // Vérifier les permissions : propriétaire, technicien ou admin
+  const isOwner = plantation.ownerId === req.user!.id;
+  const isTechnicianOrAdmin = req.user!.role === UserRole.TECHNICIAN || req.user!.role === UserRole.ADMIN;
+
+  if (!isOwner && !isTechnicianOrAdmin) {
+    return res.status(403).json({ message: 'Accès interdit' });
   }
 
   // Mettre à jour les statuts des capteurs avant de les récupérer

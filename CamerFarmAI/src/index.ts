@@ -14,6 +14,7 @@ import authRouter from './routes/auth.routes';
 import plantationRouter from './routes/plantation.routes';
 import eventRouter from './routes/event.routes';
 import notificationRouter from './routes/notification.routes';
+import technicianRouter from './routes/technician.routes';
 
 // Importer la configuration de la base de données
 import { AppDataSource } from './config/database';
@@ -69,6 +70,7 @@ app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/plantations', plantationRouter);
 app.use('/api/v1/events', eventRouter);
 app.use('/api/v1/notifications', notificationRouter);
+app.use('/api/v1/technician', technicianRouter);
 
 
 
