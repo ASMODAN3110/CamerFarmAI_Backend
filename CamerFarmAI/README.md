@@ -145,8 +145,10 @@ npm run seed:mais          # Générer des données de capteurs pour la plantati
 | GET | `/:id/sensors` | Lister les capteurs | Privé (FARMER propriétaire) |
 | PATCH | `/:id/sensors/:sensorId` | Mettre à jour un capteur (statut) | Privé (FARMER propriétaire) |
 | PATCH | `/:id/sensors/:sensorId/thresholds` | Configurer les seuils d'un capteur | Privé (FARMER propriétaire) |
-| POST | `/:id/sensors/:sensorId/readings` | Ajouter une lecture | Privé (FARMER propriétaire) |
+| POST | `/:id/sensors/:sensorId/readings` | Ajouter une lecture (active automatiquement le capteur) | Privé (FARMER propriétaire) |
 | GET | `/:id/sensors/:sensorId/readings` | Obtenir les lectures d'un capteur | Privé (FARMER propriétaire) |
+
+**Note** : Les statuts des capteurs (`ACTIVE`/`INACTIVE`) sont mis à jour automatiquement lors des appels à `GET /:id` et `GET /:id/sensors`. Un capteur devient `INACTIVE` s'il n'a pas reçu de lecture depuis 1 heure, et redevient `ACTIVE` dès qu'une nouvelle lecture est ajoutée.
 
 ### Actionneurs (`/api/v1/plantations/:id/actuators`)
 
@@ -174,6 +176,64 @@ npm run seed:mais          # Générer des données de capteurs pour la plantati
 | PATCH | `/:notificationId/read` | Marquer une notification comme lue | Privé |
 | DELETE | `/:id` | Supprimer une notification | Privé |
 
+### Dashboard Technique (`/api/v1/technician`)
+
+| Méthode | Endpoint | Description | Accès |
+|---------|----------|-------------|-------|
+| GET | `/stats` | Statistiques globales (agriculteurs, champs, capteurs actifs/inactifs, actionneurs) | Privé (TECHNICIAN, ADMIN) |
+| GET | `/farmers` | Lister les agriculteurs avec recherche optionnelle. Formats supportés : `?search=terme` (simple) ou `?search[]=mot1&search[]=mot2` (multi-mots). Recherche dans firstName, lastName et location. | Privé (TECHNICIAN, ADMIN) |
+| GET | `/farmers/:farmerId/plantations` | Lister les plantations d'un agriculteur spécifique | Privé (TECHNICIAN, ADMIN) |
+
+**Note** : Les statuts des capteurs sont automatiquement mis à jour avant le calcul des statistiques et lors de la récupération des plantations.
+
+#### Recherche d'agriculteurs pour `/technician/farmers`
+
+L'endpoint `/api/v1/technician/farmers` supporte deux formats de recherche :
+
+**Format 1 (principal) : Chaîne simple avec espaces préservés**
+```
+GET /api/v1/technician/farmers?search=Jean
+GET /api/v1/technician/farmers?search=Jean Dupont
+GET /api/v1/technician/farmers?search=Yaoundé
+```
+- Paramètre : `search` (chaîne)
+- Comportement : Recherche le **terme complet** (avec espaces préservés) dans les champs pertinents
+- Les espaces font partie du terme de recherche
+- Recherche caractère par caractère (le frontend envoie chaque caractère tapé avec debounce)
+- Exemple : `search=Jean Dupont` recherche "Jean Dupont" comme terme complet (pas "Jean" ou "Dupont" séparément)
+
+**Format 2 (rétrocompatible) : Tableau de mots (recherche OR)**
+```
+GET /api/v1/technician/farmers?search[]=Jean&search[]=Dupont
+```
+- Paramètre : `search[]` (tableau)
+- Comportement : Recherche **OR** sur chaque mot du tableau
+- Exemple : `search[]=Jean&search[]=Dupont` trouve les agriculteurs contenant "Jean" **OU** "Dupont"
+
+**Champs de recherche :**
+- `firstName` (prénom de l'agriculteur)
+- `lastName` (nom de l'agriculteur)
+- `location` (localisation des plantations de l'agriculteur)
+
+**Logique de recherche :**
+- **Format 1** : Recherche du terme complet dans au moins un champ
+- **Format 2** : Un agriculteur correspond si **au moins un mot** correspond dans **au moins un champ**
+- La recherche est **case-insensitive** (insensible à la casse)
+
+**Format de réponse :**
+```json
+[
+  {
+    "id": "uuid",
+    "firstName": "Jean",
+    "lastName": "Dupont",
+    "phone": "+237612345678",
+    "location": "Douala",
+    "plantationsCount": 3
+  }
+]
+```
+
 ## Fonctionnalités principales
 
 ### Authentification
@@ -190,10 +250,13 @@ npm run seed:mais          # Générer des données de capteurs pour la plantati
 
 ### Capteurs et monitoring
 - 5 types de capteurs : température, humidité du sol, CO2, niveau d'eau, luminosité
-- Configuration des seuils min/max par capteur
+- Configuration des seuils min/max par capteur (statiques)
+- **Seuils saisonniers** : configuration de seuils différents selon les saisons (saison sèche, saison des pluies, harmattan, transition)
 - Vérification automatique des seuils lors des lectures
 - Génération d'événements lorsque les seuils sont dépassés
 - Historique des lectures (100 dernières)
+- **Gestion automatique des statuts** : Les capteurs passent automatiquement à `INACTIVE` s'ils n'envoient pas de valeur depuis 1 heure, et redeviennent `ACTIVE` dès qu'ils envoient une nouvelle valeur
+- **Notifications de changement de statut** : Le propriétaire de la plantation reçoit automatiquement des notifications (WEB, WHATSAPP, EMAIL) lorsque ses capteurs changent de statut (ACTIVE ↔ INACTIVE)
 
 ### Actionneurs
 - Types : pompe, ventilateur, éclairage
@@ -201,7 +264,7 @@ npm run seed:mais          # Générer des données de capteurs pour la plantati
 - Génération d'événements lors des changements de statut
 
 ### Événements
-- Types : seuil dépassé, actionneur activé/désactivé, changement de mode
+- Types : seuil dépassé, actionneur activé/désactivé, changement de mode, capteur actif/inactif
 - Association automatique aux notifications
 
 ### Notifications
@@ -214,7 +277,9 @@ npm run seed:mais          # Générer des données de capteurs pour la plantati
 
 Les capteurs peuvent avoir des seuils min/max configurés pour déclencher des alertes automatiques.
 
-### Endpoint de configuration
+### Seuils statiques
+
+Les seuils peuvent être configurés de manière statique via l'endpoint :
 
 ```
 PATCH /api/v1/plantations/:id/sensors/:sensorId/thresholds
@@ -232,6 +297,30 @@ PATCH /api/v1/plantations/:id/sensors/:sensorId/thresholds
 - `seuilMin` et `seuilMax` sont requis
 - Valeurs numériques positives
 - `seuilMax` doit être strictement supérieur à `seuilMin`
+
+### Seuils saisonniers
+
+Les capteurs peuvent également avoir des seuils saisonniers configurés dans le champ `metadata`. Ces seuils varient selon les saisons :
+
+- **Saison sèche (dry_season)** : Nov-Déc-Jan-Fév
+- **Transition** : Mar-Avr
+- **Saison des pluies (rainy_season)** : Mai-Juin-Juil-Août
+- **Harmattan** : Sep-Oct
+
+Les seuils saisonniers sont stockés dans `metadata.seasonalThresholds` avec la structure :
+```json
+{
+  "seasonalThresholds": {
+    "dry_season": { "min": 28, "max": 35 },
+    "rainy_season": { "min": 22, "max": 28 },
+    "harmattan": { "min": 15, "max": 25 },
+    "transition": { "min": 20, "max": 30 }
+  },
+  "currentSeason": "dry_season"
+}
+```
+
+Les seuils par défaut (`seuilMin`/`seuilMax`) sont mis à jour automatiquement selon la saison actuelle lors de la migration.
 
 **Comportement :**
 - Lorsqu'une lecture dépasse les seuils, un événement de type `seuil_depasse` est créé automatiquement
@@ -279,6 +368,7 @@ npm run seed:mais
 | `1700000014000` | Ajout mode aux plantations et événement mode_changed |
 | `1700000015000` | Lectures pour "Champ de manioc Nord" |
 | `1700000016000` | Ajout authentification 2FA |
+| `1700000017000` | Ajout capteurs manquants et seuils saisonniers pour "Champ de test" |
 
 ## Base de données
 
@@ -286,7 +376,7 @@ npm run seed:mais
 
 - **users** : Utilisateurs (phone, email, password hashé, role, 2FA)
 - **plantations** : Plantations (name, location, area en m², cropType, mode)
-- **sensors** : Capteurs (type, status, seuilMin, seuilMax)
+- **sensors** : Capteurs (type, status, seuilMin, seuilMax, metadata JSONB pour seuils saisonniers)
 - **sensor_readings** : Lectures de capteurs (value, timestamp)
 - **actuators** : Actionneurs (name, type, status, metadata)
 - **events** : Événements système (type, description, sensorId, actuatorId)
@@ -319,12 +409,14 @@ Consultez [SECURITE.md](./SECURITE.md) pour plus de détails.
 - [x] Authentification à deux facteurs (2FA) avec TOTP
 - [x] Gestion des rôles (FARMER, TECHNICIAN, ADMIN)
 - [x] CRUD plantations avec mode automatique/manuel
-- [x] Gestion des capteurs (5 types) avec configuration de seuils
+- [x] Gestion des capteurs (5 types) avec configuration de seuils statiques et saisonniers
+- [x] Gestion automatique des statuts des capteurs (ACTIVE/INACTIVE basés sur l'activité)
 - [x] Gestion des actionneurs (pompe, ventilateur, éclairage)
 - [x] Système d'événements (seuils, actionneurs, mode)
 - [x] Notifications multi-canaux (WEB, EMAIL, WHATSAPP)
 - [x] Upload d'avatar utilisateur
 - [x] Script de génération de données de test (`seed:mais`)
+- [x] Dashboard technique pour les techniciens (statistiques, liste des agriculteurs, champs par agriculteur)
 
 ### 🔄 En cours / À faire
 
@@ -338,6 +430,9 @@ Consultez [SECURITE.md](./SECURITE.md) pour plus de détails.
 
 - [CONFIGURATION_EMAIL.md](./CONFIGURATION_EMAIL.md) - Guide de configuration SMTP Gmail
 - [SECURITE.md](./SECURITE.md) - Mesures de sécurité détaillées
+- [DOCUMENTATION_FRONTEND_SENSOR_STATUS.md](./DOCUMENTATION_FRONTEND_SENSOR_STATUS.md) - Documentation complète pour le frontend sur la gestion automatique des statuts des capteurs
+- [DOCUMENTATION_FRONTEND_NOTIFICATIONS_SENSOR_STATUS.md](./DOCUMENTATION_FRONTEND_NOTIFICATIONS_SENSOR_STATUS.md) - Documentation complète pour le frontend sur les notifications de changement de statut des capteurs
+- [DOCUMENTATION_MIGRATIONS_ACTIVATION_CAPTEURS.md](./DOCUMENTATION_MIGRATIONS_ACTIVATION_CAPTEURS.md) - Guide pour activer des capteurs inactifs via des migrations
 
 ## Contribution
 

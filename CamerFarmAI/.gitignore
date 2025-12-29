@@ -165,3 +165,10 @@ docs/.vuepress/dist/
 # Fichiers TypeScript obsolètes à la racine
 app.ts
 *.ts.bak
+
+# ============================================
+# Plans et fichiers temporaires de développement
+# ============================================
+.cursor/
+*.plan.md
+plans/

@@ -15,6 +15,8 @@ export enum EventType {
   ACTIONNEUR_ACTIVE = 'actionneur_active',
   ACTIONNEUR_DESACTIVE = 'actionneur_desactive',
   MODE_CHANGED = 'mode_changed',
+  SENSOR_ACTIVE = 'sensor_active',
+  SENSOR_INACTIVE = 'sensor_inactive',
 }
 
 @Entity('events')

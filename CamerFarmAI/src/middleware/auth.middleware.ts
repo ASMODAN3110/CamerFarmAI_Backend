@@ -136,6 +136,10 @@ export const optionalAuth = async (
 // 3. Middleware de rôle (ex: admin seulement)
 export const restrictTo = (...roles: UserRole[]) => {
   return (req: Request, res: Response, next: NextFunction) => {
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/ee9b6254-5e07-42c4-a8f7-60be2efdef1b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auth.middleware.ts:restrictTo',message:'restrictTo check',data:{hasUser:!!req.user,userRole:req.user?.role,allowedRoles:roles,path:req.path},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
+    
     if (!req.user) {
       return res.status(403).json({
         success: false,
@@ -144,6 +148,9 @@ export const restrictTo = (...roles: UserRole[]) => {
     }
 
     if (!roles.includes(req.user.role)) {
+      // #region agent log
+      fetch('http://127.0.0.1:7243/ingest/ee9b6254-5e07-42c4-a8f7-60be2efdef1b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auth.middleware.ts:restrictTo',message:'Access denied',data:{userRole:req.user.role,allowedRoles:roles},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+      // #endregion
       return res.status(403).json({
         success: false,
         message: 'Vous n\'avez pas la permission d\'effectuer cette action.',
