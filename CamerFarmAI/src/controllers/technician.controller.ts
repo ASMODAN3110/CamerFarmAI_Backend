@@ -4,7 +4,7 @@ import { AppDataSource } from '../config/database';
 import { User, UserRole } from '../models/User.entity';
 import { Plantation } from '../models/Plantation.entity';
 import { Actuator } from '../models/Actuator.entity';
-import { Like } from 'typeorm';
+// Note: Utilisation de ILIKE directement dans les requêtes SQL pour la recherche case-insensitive
 
 const userRepo = AppDataSource.getRepository(User);
 const plantationRepo = AppDataSource.getRepository(Plantation);
@@ -163,48 +163,177 @@ export const getStats = async (_req: Request, res: Response) => {
 
 /**
  * Récupère la liste des agriculteurs avec recherche optionnelle
+ * 
+ * Supporte deux formats de recherche :
+ * 
+ * Format 1 (principal) : Chaîne simple avec espaces préservés
+ * - ?search=Jean Dupont (recherche sur le terme complet "Jean Dupont")
+ * - Les espaces font partie du terme de recherche
+ * - Recherche caractère par caractère (le frontend envoie chaque caractère tapé)
+ * 
+ * Format 2 (rétrocompatible) : Tableau de mots
+ * - ?search[]=Jean&search[]=Dupont (recherche OR sur "Jean" OU "Dupont")
+ * - Chaque mot est recherché indépendamment
+ * 
+ * La recherche s'effectue dans :
+ * - firstName (prénom)
+ * - lastName (nom)
+ * - location (localisation des plantations)
+ * 
+ * Logique Format 1 : Recherche du terme complet dans au moins un champ
+ * Logique Format 2 : Un agriculteur correspond si au moins un mot correspond dans au moins un champ
  */
 export const getFarmers = async (req: Request, res: Response) => {
   try {
-    const { search } = req.query;
-    const searchTerm = search as string | undefined;
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/ee9b6254-5e07-42c4-a8f7-60be2efdef1b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'technician.controller.ts:178',message:'getFarmers entry',data:{userId:req.user?.id,userRole:req.user?.role,queryParams:req.query,allQueryKeys:Object.keys(req.query),url:req.url,originalUrl:req.originalUrl,path:req.path,queryString:req.url.split('?')[1]||null},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
+    
+    // Normaliser les paramètres de recherche
+    // Priorité : Format 1 (chaîne simple) > Format 2 (tableau)
+    let searchWords: string[] = [];
+    let searchMode: 'complete' | 'or' = 'complete'; // 'complete' pour Format 1, 'or' pour Format 2
+    
+    // Détecter le format de recherche
+    const searchStringParam = typeof req.query.search === 'string' ? req.query.search : null;
+    const searchArrayParam = req.query['search[]'] || (Array.isArray(req.query.search) && !searchStringParam ? req.query.search : null);
+    
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/ee9b6254-5e07-42c4-a8f7-60be2efdef1b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'technician.controller.ts:190',message:'All search param variations',data:{searchArrayParam,searchStringParam,reqQuerySearch:req.query.search,reqQuerySearchArray:req.query['search[]'],allQueryKeys:Object.keys(req.query),fullQueryObject:JSON.stringify(req.query)},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
+    
+    // Format 1 (principal) : Chaîne simple avec espaces préservés
+    if (searchStringParam && searchStringParam.trim().length > 0) {
+      // Recherche sur le terme complet (espaces préservés)
+      // Exemple: "Jean Dupont" recherche "Jean Dupont" comme terme complet
+      searchWords = [searchStringParam.trim()];
+      searchMode = 'complete';
+    }
+    // Format 2 (rétrocompatible) : Tableau de mots (recherche OR)
+    else if (searchArrayParam && Array.isArray(searchArrayParam)) {
+      // Format: search[]=mot1&search[]=mot2
+      // Recherche OR : trouve si au moins un mot correspond
+      searchWords = searchArrayParam
+        .filter((word): word is string => typeof word === 'string')
+        .map(word => word.trim())
+        .filter(word => word.length > 0);
+      searchMode = 'or';
+    }
+    
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/ee9b6254-5e07-42c4-a8f7-60be2efdef1b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'technician.controller.ts:195',message:'Normalized search words',data:{searchWords,count:searchWords.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
 
-    // Construire la condition de recherche
-    let whereCondition: any = { role: UserRole.FARMER };
+    // Construire la requête de base
+    const queryBuilder = userRepo
+      .createQueryBuilder('user')
+      .leftJoinAndSelect('user.plantations', 'plantation')
+      .where('user.role = :role', { role: UserRole.FARMER });
 
-    if (searchTerm) {
-      whereCondition = [
-        { role: UserRole.FARMER, firstName: Like(`%${searchTerm}%`) },
-        { role: UserRole.FARMER, lastName: Like(`%${searchTerm}%`) },
-      ];
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/ee9b6254-5e07-42c4-a8f7-60be2efdef1b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'technician.controller.ts:198',message:'Query builder created',data:{hasSearch:searchWords.length>0},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
+
+    // Si des mots de recherche sont fournis
+    if (searchWords.length > 0) {
+      if (searchMode === 'complete') {
+        // Format 1 : Recherche du terme complet (avec espaces préservés)
+        // Un seul terme à rechercher dans tous les champs
+        const searchTerm = searchWords[0];
+        queryBuilder.andWhere(`(
+          user.firstName ILIKE :searchTerm OR
+          user.lastName ILIKE :searchTerm OR
+          plantation.location ILIKE :searchTerm
+        )`);
+        queryBuilder.setParameter('searchTerm', `%${searchTerm}%`);
+      } else {
+        // Format 2 : Recherche OR sur chaque mot
+        // Un agriculteur correspond si au moins un mot correspond dans au moins un champ
+        const wordConditions = searchWords.map((_word, index) => {
+          const paramName = `searchWord${index}`;
+          return `(
+            user.firstName ILIKE :${paramName} OR
+            user.lastName ILIKE :${paramName} OR
+            plantation.location ILIKE :${paramName}
+          )`;
+        });
+
+        // Combiner toutes les conditions avec OR
+        queryBuilder.andWhere(`(${wordConditions.join(' OR ')})`);
+        
+        // Ajouter les paramètres pour chaque mot
+        searchWords.forEach((word, index) => {
+          queryBuilder.setParameter(`searchWord${index}`, `%${word}%`);
+        });
+      }
+      
+      // #region agent log
+      const sql = queryBuilder.getSql();
+      const params = queryBuilder.getParameters();
+      fetch('http://127.0.0.1:7243/ingest/ee9b6254-5e07-42c4-a8f7-60be2efdef1b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'technician.controller.ts:240',message:'SQL query with search',data:{sql,params,searchMode,searchWords},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
+    } else {
+      // #region agent log
+      const sql = queryBuilder.getSql();
+      fetch('http://127.0.0.1:7243/ingest/ee9b6254-5e07-42c4-a8f7-60be2efdef1b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'technician.controller.ts:223',message:'SQL query without search',data:{sql},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
     }
 
-    // Récupérer les agriculteurs
-    const farmers = await userRepo.find({
-      where: whereCondition,
-      relations: ['plantations'],
-      select: ['id', 'firstName', 'lastName', 'phone', 'email'],
-    });
+    // Exécuter la requête
+    const farmers = await queryBuilder
+      .select([
+        'user.id',
+        'user.firstName',
+        'user.lastName',
+        'plantation.id',
+        'plantation.location',
+      ])
+      .getMany();
+    
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/ee9b6254-5e07-42c4-a8f7-60be2efdef1b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'technician.controller.ts:234',message:'Query executed - raw results',data:{farmersCount:farmers.length,farmers:farmers.map(f=>({id:f.id,firstName:f.firstName,lastName:f.lastName,plantationsCount:f.plantations?.length||0}))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+    // #endregion
 
     // Formater la réponse avec le nombre de plantations et la location
-    const farmersWithStats = farmers.map((farmer) => {
-      // Les plantations sont déjà chargées via la relation
-      const plantations = farmer.plantations || [];
-      
-      // Récupérer la location depuis la première plantation ou null
-      const location = plantations.length > 0 ? plantations[0].location : null;
+    // Utiliser un Map pour éviter les doublons (un agriculteur peut avoir plusieurs plantations)
+    const farmersMap = new Map<string, any>();
+    
+    farmers.forEach((farmer) => {
+      if (!farmersMap.has(farmer.id)) {
+        const plantations = farmer.plantations || [];
+        const location = plantations.length > 0 && plantations[0].location 
+          ? plantations[0].location 
+          : null;
 
-      return {
-        id: farmer.id,
-        firstName: farmer.firstName,
-        lastName: farmer.lastName,
-        location: location || null,
-        plantationsCount: plantations.length,
-      };
+        farmersMap.set(farmer.id, {
+          id: farmer.id,
+          firstName: farmer.firstName,
+          lastName: farmer.lastName,
+          location: location,
+          plantationsCount: plantations.length,
+        });
+      } else {
+        // Si l'agriculteur existe déjà, mettre à jour le count de plantations
+        const existing = farmersMap.get(farmer.id);
+        const plantations = farmer.plantations || [];
+        existing.plantationsCount = Math.max(existing.plantationsCount, plantations.length);
+        if (!existing.location && plantations.length > 0 && plantations[0].location) {
+          existing.location = plantations[0].location;
+        }
+      }
     });
+    
+    const farmersWithStats = Array.from(farmersMap.values());
+    
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/ee9b6254-5e07-42c4-a8f7-60be2efdef1b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'technician.controller.ts:255',message:'Formatted response',data:{farmersCount:farmersWithStats.length,farmers:farmersWithStats},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+    // #endregion
 
     return res.json(farmersWithStats);
   } catch (error: any) {
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/ee9b6254-5e07-42c4-a8f7-60be2efdef1b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'technician.controller.ts:260',message:'Error caught',data:{errorMessage:error?.message,errorStack:error?.stack,errorName:error?.name},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+    // #endregion
     console.error('Erreur lors de la récupération des agriculteurs:', error);
     return res.status(500).json({ message: 'Erreur serveur' });
   }

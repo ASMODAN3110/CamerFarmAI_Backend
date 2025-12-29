@@ -181,10 +181,57 @@ npm run seed:mais          # Générer des données de capteurs pour la plantati
 | Méthode | Endpoint | Description | Accès |
 |---------|----------|-------------|-------|
 | GET | `/stats` | Statistiques globales (agriculteurs, champs, capteurs actifs/inactifs, actionneurs) | Privé (TECHNICIAN, ADMIN) |
-| GET | `/farmers` | Lister les agriculteurs avec recherche optionnelle (`?search=terme`) | Privé (TECHNICIAN, ADMIN) |
+| GET | `/farmers` | Lister les agriculteurs avec recherche optionnelle. Formats supportés : `?search=terme` (simple) ou `?search[]=mot1&search[]=mot2` (multi-mots). Recherche dans firstName, lastName et location. | Privé (TECHNICIAN, ADMIN) |
 | GET | `/farmers/:farmerId/plantations` | Lister les plantations d'un agriculteur spécifique | Privé (TECHNICIAN, ADMIN) |
 
 **Note** : Les statuts des capteurs sont automatiquement mis à jour avant le calcul des statistiques et lors de la récupération des plantations.
+
+#### Recherche d'agriculteurs pour `/technician/farmers`
+
+L'endpoint `/api/v1/technician/farmers` supporte deux formats de recherche :
+
+**Format 1 (principal) : Chaîne simple avec espaces préservés**
+```
+GET /api/v1/technician/farmers?search=Jean
+GET /api/v1/technician/farmers?search=Jean Dupont
+GET /api/v1/technician/farmers?search=Yaoundé
+```
+- Paramètre : `search` (chaîne)
+- Comportement : Recherche le **terme complet** (avec espaces préservés) dans les champs pertinents
+- Les espaces font partie du terme de recherche
+- Recherche caractère par caractère (le frontend envoie chaque caractère tapé avec debounce)
+- Exemple : `search=Jean Dupont` recherche "Jean Dupont" comme terme complet (pas "Jean" ou "Dupont" séparément)
+
+**Format 2 (rétrocompatible) : Tableau de mots (recherche OR)**
+```
+GET /api/v1/technician/farmers?search[]=Jean&search[]=Dupont
+```
+- Paramètre : `search[]` (tableau)
+- Comportement : Recherche **OR** sur chaque mot du tableau
+- Exemple : `search[]=Jean&search[]=Dupont` trouve les agriculteurs contenant "Jean" **OU** "Dupont"
+
+**Champs de recherche :**
+- `firstName` (prénom de l'agriculteur)
+- `lastName` (nom de l'agriculteur)
+- `location` (localisation des plantations de l'agriculteur)
+
+**Logique de recherche :**
+- **Format 1** : Recherche du terme complet dans au moins un champ
+- **Format 2** : Un agriculteur correspond si **au moins un mot** correspond dans **au moins un champ**
+- La recherche est **case-insensitive** (insensible à la casse)
+
+**Format de réponse :**
+```json
+[
+  {
+    "id": "uuid",
+    "firstName": "Jean",
+    "lastName": "Dupont",
+    "location": "Douala",
+    "plantationsCount": 3
+  }
+]
+```
 
 ## Fonctionnalités principales
 
@@ -384,6 +431,7 @@ Consultez [SECURITE.md](./SECURITE.md) pour plus de détails.
 - [SECURITE.md](./SECURITE.md) - Mesures de sécurité détaillées
 - [DOCUMENTATION_FRONTEND_SENSOR_STATUS.md](./DOCUMENTATION_FRONTEND_SENSOR_STATUS.md) - Documentation complète pour le frontend sur la gestion automatique des statuts des capteurs
 - [DOCUMENTATION_FRONTEND_NOTIFICATIONS_SENSOR_STATUS.md](./DOCUMENTATION_FRONTEND_NOTIFICATIONS_SENSOR_STATUS.md) - Documentation complète pour le frontend sur les notifications de changement de statut des capteurs
+- [DOCUMENTATION_MIGRATIONS_ACTIVATION_CAPTEURS.md](./DOCUMENTATION_MIGRATIONS_ACTIVATION_CAPTEURS.md) - Guide pour activer des capteurs inactifs via des migrations
 
 ## Contribution
 
