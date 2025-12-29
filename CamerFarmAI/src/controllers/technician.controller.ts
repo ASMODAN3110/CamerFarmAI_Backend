@@ -285,6 +285,7 @@ export const getFarmers = async (req: Request, res: Response) => {
         'user.id',
         'user.firstName',
         'user.lastName',
+        'user.phone',
         'plantation.id',
         'plantation.location',
       ])
@@ -309,6 +310,7 @@ export const getFarmers = async (req: Request, res: Response) => {
           id: farmer.id,
           firstName: farmer.firstName,
           lastName: farmer.lastName,
+          phone: farmer.phone,
           location: location,
           plantationsCount: plantations.length,
         });

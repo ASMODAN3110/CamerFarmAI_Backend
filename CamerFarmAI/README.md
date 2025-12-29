@@ -227,6 +227,7 @@ GET /api/v1/technician/farmers?search[]=Jean&search[]=Dupont
     "id": "uuid",
     "firstName": "Jean",
     "lastName": "Dupont",
+    "phone": "+237612345678",
     "location": "Douala",
     "plantationsCount": 3
   }
