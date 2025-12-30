@@ -59,7 +59,7 @@ export class User {
   @UpdateDateColumn()
   updatedAt!: Date;
 
-  @OneToMany(() => Plantation, plantation => plantation.owner)
+  @OneToMany(() => Plantation, plantation => plantation.owner, { onDelete: 'CASCADE' })
   plantations!: Plantation[];
 
   @BeforeInsert()

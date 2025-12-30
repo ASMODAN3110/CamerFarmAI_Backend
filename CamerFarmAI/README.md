@@ -234,6 +234,78 @@ GET /api/v1/technician/farmers?search[]=Jean&search[]=Dupont
 ]
 ```
 
+### Administration (`/api/v1/admin`)
+
+| Méthode | Endpoint | Description | Accès |
+|---------|----------|-------------|-------|
+| GET | `/users` | Lister tous les utilisateurs (agriculteurs et techniciens) | Privé (ADMIN uniquement) |
+| GET | `/users/:id` | Récupérer les détails d'un utilisateur avec ses plantations | Privé (ADMIN uniquement) |
+| POST | `/users/technicians` | Créer un compte technicien | Privé (ADMIN uniquement) |
+| DELETE | `/users/:id` | Supprimer un utilisateur (et ses plantations en cascade) | Privé (ADMIN uniquement) |
+
+**Format de réponse pour GET /api/v1/admin/users :**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "uuid",
+      "phone": "+237612345678",
+      "email": "user@example.com",
+      "firstName": "Jean",
+      "lastName": "Dupont",
+      "role": "farmer",
+      "twoFactorEnabled": false,
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "plantationsCount": 3
+    }
+  ]
+}
+```
+
+**Format de réponse pour GET /api/v1/admin/users/:id :**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "uuid",
+    "phone": "+237612345678",
+    "email": "user@example.com",
+    "firstName": "Jean",
+    "lastName": "Dupont",
+    "role": "farmer",
+    "twoFactorEnabled": false,
+    "createdAt": "2024-01-01T00:00:00.000Z",
+    "updatedAt": "2024-01-01T00:00:00.000Z",
+    "plantations": [
+      {
+        "id": "uuid",
+        "name": "Champ de manioc",
+        "location": "Douala",
+        "cropType": "manioc"
+      }
+    ]
+  }
+}
+```
+
+**Format de requête pour POST /api/v1/admin/users/technicians :**
+```json
+{
+  "phone": "+237612345678",
+  "password": "MotDePasse123!",
+  "firstName": "Jean",
+  "lastName": "Dupont",
+  "email": "technicien@example.com"
+}
+```
+
+**Notes importantes :**
+- Seuls les utilisateurs avec le rôle ADMIN peuvent accéder à ces endpoints
+- La suppression d'un utilisateur supprime automatiquement toutes ses plantations (cascade)
+- Il est impossible de supprimer un compte ADMIN
+- Les comptes ADMIN ne sont pas listés dans `/users` (seulement FARMER et TECHNICIAN)
+
 ## Fonctionnalités principales
 
 ### Authentification
