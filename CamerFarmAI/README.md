@@ -257,6 +257,7 @@ GET /api/v1/technician/farmers?search[]=Jean&search[]=Dupont
       "lastName": "Dupont",
       "role": "farmer",
       "twoFactorEnabled": false,
+      "isActive": true,
       "createdAt": "2024-01-01T00:00:00.000Z",
       "plantationsCount": 3
     }
@@ -274,11 +275,12 @@ GET /api/v1/technician/farmers?search[]=Jean&search[]=Dupont
     "email": "user@example.com",
     "firstName": "Jean",
     "lastName": "Dupont",
-    "role": "farmer",
-    "twoFactorEnabled": false,
-    "createdAt": "2024-01-01T00:00:00.000Z",
-    "updatedAt": "2024-01-01T00:00:00.000Z",
-    "plantations": [
+      "role": "farmer",
+      "twoFactorEnabled": false,
+      "isActive": true,
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z",
+      "plantations": [
       {
         "id": "uuid",
         "name": "Champ de manioc",
@@ -333,11 +335,13 @@ GET /api/v1/technician/farmers?search[]=Jean&search[]=Dupont
 ## Fonctionnalités principales
 
 ### Authentification
-- Inscription et connexion avec JWT
+- Inscription et connexion avec JWT (connexion par email)
 - Authentification à deux facteurs (2FA) avec TOTP
 - Refresh tokens dans des cookies HttpOnly
 - Gestion des rôles (FARMER, TECHNICIAN, ADMIN)
 - Upload d'avatar utilisateur
+- Système d'activation/désactivation des comptes (`isActive`)
+- Vérification du statut du compte à chaque connexion et requête authentifiée
 
 ### Gestion des plantations
 - CRUD complet des plantations
@@ -465,12 +469,15 @@ npm run seed:mais
 | `1700000015000` | Lectures pour "Champ de manioc Nord" |
 | `1700000016000` | Ajout authentification 2FA |
 | `1700000017000` | Ajout capteurs manquants et seuils saisonniers pour "Champ de test" |
+| `1700000018000` | Ajout lectures de capteurs pour "Nouveau Champ de Test" |
+| `1700000019000` | Activation des capteurs inactifs via lectures récentes |
+| `1700000020000` | Ajout champ isActive aux utilisateurs (activation/désactivation) |
 
 ## Base de données
 
 ### Tables principales
 
-- **users** : Utilisateurs (phone, email, password hashé, role, 2FA)
+- **users** : Utilisateurs (phone, email, password hashé, role, 2FA, isActive)
 - **plantations** : Plantations (name, location, area en m², cropType, mode)
 - **sensors** : Capteurs (type, status, seuilMin, seuilMax, metadata JSONB pour seuils saisonniers)
 - **sensor_readings** : Lectures de capteurs (value, timestamp)
@@ -513,6 +520,8 @@ Consultez [SECURITE.md](./SECURITE.md) pour plus de détails.
 - [x] Upload d'avatar utilisateur
 - [x] Script de génération de données de test (`seed:mais`)
 - [x] Dashboard technique pour les techniciens (statistiques, liste des agriculteurs, champs par agriculteur)
+- [x] Fonctionnalités administrateur (gestion des utilisateurs, création de techniciens, activation/désactivation de comptes)
+- [x] Système d'activation/désactivation des comptes utilisateurs (`isActive`)
 
 ### 🔄 En cours / À faire
 
@@ -526,9 +535,7 @@ Consultez [SECURITE.md](./SECURITE.md) pour plus de détails.
 
 - [CONFIGURATION_EMAIL.md](./CONFIGURATION_EMAIL.md) - Guide de configuration SMTP Gmail
 - [SECURITE.md](./SECURITE.md) - Mesures de sécurité détaillées
-- [DOCUMENTATION_FRONTEND_SENSOR_STATUS.md](./DOCUMENTATION_FRONTEND_SENSOR_STATUS.md) - Documentation complète pour le frontend sur la gestion automatique des statuts des capteurs
-- [DOCUMENTATION_FRONTEND_NOTIFICATIONS_SENSOR_STATUS.md](./DOCUMENTATION_FRONTEND_NOTIFICATIONS_SENSOR_STATUS.md) - Documentation complète pour le frontend sur les notifications de changement de statut des capteurs
-- [DOCUMENTATION_MIGRATIONS_ACTIVATION_CAPTEURS.md](./DOCUMENTATION_MIGRATIONS_ACTIVATION_CAPTEURS.md) - Guide pour activer des capteurs inactifs via des migrations
+- [README_FRONTEND_ADMIN.md](./README_FRONTEND_ADMIN.md) - Documentation complète pour le frontend sur les fonctionnalités administrateur
 
 ## Contribution
 
