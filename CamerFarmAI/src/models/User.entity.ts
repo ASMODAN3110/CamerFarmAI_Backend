@@ -53,6 +53,9 @@ export class User {
   @Column({ type: 'boolean', default: false })
   twoFactorEnabled!: boolean;
 
+  @Column({ type: 'boolean', default: true })
+  isActive!: boolean;
+
   @CreateDateColumn()
   createdAt!: Date;
 

@@ -68,13 +68,21 @@ export const protectRoute = async (
     const userRepository = AppDataSource.getRepository(User);
     const currentUser = await userRepository.findOne({
       where: { id: userId },
-      select: ['id', 'phone', 'firstName', 'lastName', 'email', 'role', 'createdAt', 'updatedAt'],
+      select: ['id', 'phone', 'firstName', 'lastName', 'email', 'role', 'isActive', 'createdAt', 'updatedAt'],
     });
 
     if (!currentUser) {
       return res.status(401).json({
         success: false,
         message: 'Utilisateur non trouvé. Token invalide.',
+      });
+    }
+
+    // Vérifier que le compte est actif
+    if (!currentUser.isActive) {
+      return res.status(401).json({
+        success: false,
+        message: 'Compte désactivé. Veuillez contacter un administrateur.',
       });
     }
 
@@ -120,10 +128,11 @@ export const optionalAuth = async (
       const userRepository = AppDataSource.getRepository(User);
       const user = await userRepository.findOne({
           where: { id: userId },
-          select: ['id', 'phone', 'firstName', 'lastName', 'email', 'role', 'createdAt', 'updatedAt'],
+          select: ['id', 'phone', 'firstName', 'lastName', 'email', 'role', 'isActive', 'createdAt', 'updatedAt'],
       });
 
-      if (user) req.user = user;
+      // Ne pas attacher l'utilisateur si le compte est désactivé
+      if (user && user.isActive) req.user = user;
       }
     }
   } catch (error) {

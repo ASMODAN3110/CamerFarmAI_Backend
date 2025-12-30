@@ -22,6 +22,7 @@ export const getAllUsers = async (_req: Request, res: Response) => {
       lastName: user.lastName,
       role: user.role,
       twoFactorEnabled: user.twoFactorEnabled,
+      isActive: user.isActive,
       createdAt: user.createdAt,
       plantationsCount: user.plantations?.length || 0,
     }));
@@ -74,6 +75,7 @@ export const getUserById = async (req: Request, res: Response) => {
         lastName: user.lastName,
         role: user.role,
         twoFactorEnabled: user.twoFactorEnabled,
+        isActive: user.isActive,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
         plantations: formattedPlantations,
@@ -169,6 +171,51 @@ export const deleteUser = async (req: Request, res: Response) => {
     return res.status(500).json({
       success: false,
       message: 'Erreur serveur lors de la suppression de l\'utilisateur',
+    });
+  }
+};
+
+/**
+ * PATCH /api/v1/admin/users/:id/status
+ * Active ou désactive un compte utilisateur
+ */
+export const updateUserStatus = async (req: Request, res: Response) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: 'Données invalides',
+      errors: errors.array(),
+    });
+  }
+
+  try {
+    const { id } = req.params;
+    const { isActive } = req.body;
+
+    const user = await AdminService.toggleUserStatus(id, isActive);
+
+    return res.json({
+      success: true,
+      message: 'Statut du compte mis à jour avec succès',
+      data: {
+        id: user.id,
+        isActive: user.isActive,
+      },
+    });
+  } catch (error: any) {
+    console.error('Erreur lors de la mise à jour du statut:', error);
+
+    if (error instanceof HttpException) {
+      return res.status(error.statusCode).json({
+        success: false,
+        message: error.message,
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur lors de la mise à jour du statut',
     });
   }
 };

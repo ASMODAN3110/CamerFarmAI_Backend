@@ -241,6 +241,7 @@ GET /api/v1/technician/farmers?search[]=Jean&search[]=Dupont
 | GET | `/users` | Lister tous les utilisateurs (agriculteurs et techniciens) | Privé (ADMIN uniquement) |
 | GET | `/users/:id` | Récupérer les détails d'un utilisateur avec ses plantations | Privé (ADMIN uniquement) |
 | POST | `/users/technicians` | Créer un compte technicien | Privé (ADMIN uniquement) |
+| PATCH | `/users/:id/status` | Activer ou désactiver un compte utilisateur | Privé (ADMIN uniquement) |
 | DELETE | `/users/:id` | Supprimer un utilisateur (et ses plantations en cascade) | Privé (ADMIN uniquement) |
 
 **Format de réponse pour GET /api/v1/admin/users :**
@@ -300,11 +301,34 @@ GET /api/v1/technician/farmers?search[]=Jean&search[]=Dupont
 }
 ```
 
+**Format de requête pour PATCH /api/v1/admin/users/:id/status :**
+```json
+{
+  "isActive": false
+}
+```
+
+**Format de réponse pour PATCH /api/v1/admin/users/:id/status :**
+```json
+{
+  "success": true,
+  "message": "Statut du compte mis à jour avec succès",
+  "data": {
+    "id": "uuid",
+    "isActive": false
+  }
+}
+```
+
 **Notes importantes :**
 - Seuls les utilisateurs avec le rôle ADMIN peuvent accéder à ces endpoints
 - La suppression d'un utilisateur supprime automatiquement toutes ses plantations (cascade)
 - Il est impossible de supprimer un compte ADMIN
+- Il est impossible de modifier le statut d'un compte ADMIN (activation/désactivation)
 - Les comptes ADMIN ne sont pas listés dans `/users` (seulement FARMER et TECHNICIAN)
+- Un compte désactivé (`isActive: false`) ne peut plus se connecter au système
+- Les tokens existants d'un compte désactivé sont invalidés au prochain appel API
+- Le champ `isActive` est inclus dans les réponses de `/users` et `/users/:id`
 
 ## Fonctionnalités principales
 

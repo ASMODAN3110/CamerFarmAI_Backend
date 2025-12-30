@@ -44,6 +44,9 @@ export class AuthService {
     const user = await userRepository.findOne({ where: { email } });
     if (!user) return null;
 
+    // Vérifier que le compte est actif
+    if (!user.isActive) return null;
+
     const isPasswordValid = await user.validatePassword(plainPassword);
     if (!isPasswordValid) return null;
 

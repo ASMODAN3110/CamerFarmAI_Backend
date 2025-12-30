@@ -26,6 +26,7 @@ export class AdminService {
         'lastName',
         'role',
         'twoFactorEnabled',
+        'isActive',
         'createdAt',
         'updatedAt',
       ],
@@ -52,6 +53,7 @@ export class AdminService {
         'lastName',
         'role',
         'twoFactorEnabled',
+        'isActive',
         'createdAt',
         'updatedAt',
       ],
@@ -111,6 +113,29 @@ export class AdminService {
     // Les plantations seront supprimées automatiquement
     // Utiliser delete au lieu de remove pour éviter de charger toute l'entité
     await userRepository.delete(userId);
+  }
+
+  /**
+   * Active ou désactive un compte utilisateur
+   */
+  static async toggleUserStatus(userId: string, isActive: boolean): Promise<User> {
+    const user = await userRepository.findOne({
+      where: { id: userId },
+      select: ['id', 'role', 'isActive'],
+    });
+
+    if (!user) {
+      throw new HttpException(404, 'Utilisateur non trouvé');
+    }
+
+    // Empêcher la désactivation d'un ADMIN
+    if (user.role === UserRole.ADMIN) {
+      throw new HttpException(400, 'Impossible de modifier le statut d\'un compte administrateur');
+    }
+
+    // Mettre à jour le statut
+    user.isActive = isActive;
+    return await userRepository.save(user);
   }
 }
 

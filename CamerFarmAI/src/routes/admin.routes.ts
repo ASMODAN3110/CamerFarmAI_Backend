@@ -13,6 +13,15 @@ const router = Router();
 router.use(protectRoute);
 router.use(restrictTo(UserRole.ADMIN));
 
+// Middlewares de validation pour la mise à jour du statut
+const validateUpdateStatus = [
+  body('isActive')
+    .notEmpty()
+    .withMessage('Le statut isActive est requis')
+    .isBoolean()
+    .withMessage('isActive doit être un booléen'),
+];
+
 // Middlewares de validation pour la création de technicien
 const validateCreateTechnician = [
   body('phone')
@@ -77,6 +86,19 @@ router.post(
  * @access  Privé (ADMIN uniquement)
  */
 router.delete('/users/:id', validateUUID('id'), adminController.deleteUser);
+
+/**
+ * @route   PATCH /api/v1/admin/users/:id/status
+ * @desc    Active ou désactive un compte utilisateur
+ * @access  Privé (ADMIN uniquement)
+ */
+router.patch(
+  '/users/:id/status',
+  validateUUID('id'),
+  validateUpdateStatus,
+  sanitizeInput,
+  adminController.updateUserStatus
+);
 
 export default router;
 
