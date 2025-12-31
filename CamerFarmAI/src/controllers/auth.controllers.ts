@@ -534,13 +534,21 @@ export const verifyTwoFactorLogin = async (req: Request, res: Response) => {
     const userRepository = AppDataSource.getRepository(User);
     const user = await userRepository.findOne({
       where: { id: tokenData.userId },
-      select: ['id', 'phone', 'firstName', 'lastName', 'email', 'role', 'twoFactorSecret', 'twoFactorEnabled'],
+      select: ['id', 'phone', 'firstName', 'lastName', 'email', 'role', 'twoFactorSecret', 'twoFactorEnabled', 'isActive'],
     });
 
     if (!user) {
       return res.status(401).json({
         success: false,
         message: 'Utilisateur non trouvé',
+      });
+    }
+
+    // Vérifier que le compte est actif
+    if (!user.isActive) {
+      return res.status(401).json({
+        success: false,
+        message: 'Email ou mot de passe incorrect',
       });
     }
 

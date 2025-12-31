@@ -40,7 +40,7 @@ export class Plantation {
   })
   mode!: PlantationMode; // Mode de contrôle : automatique ou manuel
 
-  @ManyToOne(() => User, user => user.plantations)
+  @ManyToOne(() => User, user => user.plantations, { onDelete: 'CASCADE' })
   owner!: User;
 
   @Column('uuid')
