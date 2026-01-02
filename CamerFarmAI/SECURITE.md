@@ -65,6 +65,8 @@ Ce document décrit les mesures de sécurité implémentées dans l'application 
 - **Protection des routes** : Middleware `protectRoute` obligatoire
 - **Gestion des rôles** : Middleware `restrictTo` pour les permissions
 - **Vérification utilisateur** : Vérification en base de données à chaque requête
+- **Vérification du statut** : Vérification que le compte est actif (`isActive === true`) à chaque connexion et requête authentifiée
+- **Comptes désactivés** : Les comptes désactivés ne peuvent pas se connecter, même avec des identifiants corrects
 
 ### 9. Validation des Données
 
@@ -130,6 +132,7 @@ Ce document décrit les mesures de sécurité implémentées dans l'application 
 ### Force Brute
 - ✅ **Rate limiting** : Limitation stricte des tentatives de connexion
 - ✅ **Logging** : Enregistrement des tentatives échouées
+- ✅ **Comptes désactivés** : Les comptes désactivés ne peuvent pas se connecter (protection supplémentaire)
 
 ### DDoS
 - ✅ **Limite de taille** : 10MB max par requête

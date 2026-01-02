@@ -32,6 +32,9 @@ export class EventService {
   /**
    * Traite un événement en créant des notifications pour tous les canaux
    * et en les envoyant aux utilisateurs concernés
+   * 
+   * Les notifications sont envoyées simultanément via WEB et EMAIL (si disponible).
+   * Si un canal échoue, les autres continuent de fonctionner.
    */
   static async processEvent(event: Event, userIds: string[]): Promise<void> {
     const notificationRepository = AppDataSource.getRepository(Notification);
@@ -42,11 +45,16 @@ export class EventService {
       where: userIds.map(id => ({ id })),
     });
 
+    if (users.length === 0) {
+      console.warn(`⚠️  Aucun utilisateur trouvé pour l'événement ${event.id}`);
+      return;
+    }
+
     // Pour chaque utilisateur, créer des notifications pour chaque canal
     const notifications: Notification[] = [];
 
     for (const user of users) {
-      // Notification Web (toujours créée)
+      // Notification Web (toujours créée et envoyée)
       const webNotification = notificationRepository.create({
         canal: NotificationCanal.WEB,
         eventId: event.id,
@@ -54,29 +62,66 @@ export class EventService {
       });
       notifications.push(webNotification);
 
-      // Notification WhatsApp (si l'utilisateur a un téléphone)
-      if (user.phone) {
-        const whatsappNotification = notificationRepository.create({
-          canal: NotificationCanal.WHATSAPP,
+      // Notification Email (créée si l'utilisateur a un email)
+      if (user.email) {
+        const emailNotification = notificationRepository.create({
+          canal: NotificationCanal.EMAIL,
           eventId: event.id,
           userId: user.id,
         });
-        notifications.push(whatsappNotification);
+        notifications.push(emailNotification);
+      } else {
+        console.log(`ℹ️  Utilisateur ${user.id} n'a pas d'adresse email - notification EMAIL ignorée`);
       }
     }
 
     // Sauvegarder toutes les notifications
     const savedNotifications = await notificationRepository.save(notifications);
+    
+    console.log(`📨 Envoi de ${savedNotifications.length} notification(s) pour l'événement ${event.id} (${event.type})`);
 
     // Envoyer les notifications via les services appropriés
+    // Chaque canal est envoyé indépendamment - si un échoue, les autres continuent
+    const results = {
+      web: { success: 0, error: 0 },
+      email: { success: 0, error: 0 },
+    };
+
     for (const notification of savedNotifications) {
       try {
         const service = NotificationServiceFactory.create(notification.canal);
         await service.envoyerNotification(notification);
-      } catch (error) {
-        console.error(`Erreur lors de l'envoi de la notification ${notification.id}:`, error);
+        
+        // Compter les succès par canal
+        if (notification.canal === NotificationCanal.WEB) {
+          results.web.success++;
+        } else if (notification.canal === NotificationCanal.EMAIL) {
+          results.email.success++;
+        }
+      } catch (error: any) {
+        // Compter les erreurs par canal
+        if (notification.canal === NotificationCanal.WEB) {
+          results.web.error++;
+        } else if (notification.canal === NotificationCanal.EMAIL) {
+          results.email.error++;
+        }
+        
+        console.error(`❌ Erreur lors de l'envoi de la notification ${notification.id} (${notification.canal}):`, error?.message || error);
         // La notification a déjà été marquée comme erreur dans le service
+        // Ne pas propager l'erreur pour permettre aux autres canaux de continuer
       }
+    }
+
+    // Log récapitulatif
+    const totalSuccess = results.web.success + results.email.success;
+    const totalError = results.web.error + results.email.error;
+    
+    if (totalSuccess > 0) {
+      console.log(`✅ Notifications envoyées: WEB=${results.web.success}/${results.web.success + results.web.error}, EMAIL=${results.email.success}/${results.email.success + results.email.error}`);
+    }
+    
+    if (totalError > 0) {
+      console.warn(`⚠️  ${totalError} notification(s) n'ont pas pu être envoyées (voir les erreurs ci-dessus)`);
     }
   }
 

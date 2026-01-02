@@ -301,18 +301,18 @@ export const getFarmers = async (req: Request, res: Response) => {
     
     farmers.forEach((farmer) => {
       if (!farmersMap.has(farmer.id)) {
-        const plantations = farmer.plantations || [];
+      const plantations = farmer.plantations || [];
         const location = plantations.length > 0 && plantations[0].location 
           ? plantations[0].location 
           : null;
-
+      
         farmersMap.set(farmer.id, {
-          id: farmer.id,
-          firstName: farmer.firstName,
-          lastName: farmer.lastName,
+        id: farmer.id,
+        firstName: farmer.firstName,
+        lastName: farmer.lastName,
           phone: farmer.phone,
           location: location,
-          plantationsCount: plantations.length,
+        plantationsCount: plantations.length,
         });
       } else {
         // Si l'agriculteur existe déjà, mettre à jour le count de plantations

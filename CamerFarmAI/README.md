@@ -45,42 +45,37 @@ Backend/
    
    > 📧 **Configuration Email** : Consultez [CONFIGURATION_EMAIL.md](./CONFIGURATION_EMAIL.md) pour la configuration SMTP Gmail
 
-   ```env
-   # Base de données
-   DATABASE_URL=postgresql://username:password@host:port/database
+```env
+# Base de données
+DATABASE_URL=postgresql://username:password@host:port/database
 
-   # JWT
-   JWT_SECRET=votre_secret_jwt_super_securise
-   ACCESS_TOKEN_EXPIRES_IN=15m
-   REFRESH_TOKEN_EXPIRES_IN=7d
+# JWT
+JWT_SECRET=votre_secret_jwt_super_securise
+ACCESS_TOKEN_EXPIRES_IN=15m
+REFRESH_TOKEN_EXPIRES_IN=7d
 
-   # Serveur
-   PORT=3000
-   NODE_ENV=development
-   FRONTEND_URL=http://localhost:5173
+# Serveur
+PORT=3000
+NODE_ENV=development
+FRONTEND_URL=http://localhost:5173
 
-   # Email (SMTP)
-   SMTP_HOST=smtp.gmail.com
-   SMTP_PORT=587
-   SMTP_USER=votre_email@gmail.com
-   SMTP_PASS=votre_mot_de_passe_application_gmail
-   SMTP_FROM=noreply@camerfarmai.com
-
-   # WhatsApp (Twilio - optionnel)
-   TWILIO_ACCOUNT_SID=votre_account_sid_twilio
-   TWILIO_AUTH_TOKEN=votre_auth_token_twilio
-   TWILIO_WHATSAPP_NUMBER=whatsapp:+14155238886
-   ```
+# Email (SMTP) - Optionnel
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=votre_email@gmail.com
+SMTP_PASS=votre_mot_de_passe_application_gmail
+SMTP_FROM=noreply@camerfarmai.com  # Optionnel (défaut: SMTP_USER)
+```
 
 3. **Initialiser la base de données**
-   ```bash
-   npm run migration:run
-   ```
+```bash
+npm run migration:run
+```
 
 4. **Démarrer le serveur**
-   ```bash
+```bash
    npm run dev
-   ```
+```
 
 Le serveur sera accessible sur `http://localhost:3000`
 
@@ -92,6 +87,7 @@ npm run migration:run        # Exécuter les migrations
 npm run migration:revert    # Annuler la dernière migration
 npm run migration:generate  # Générer une nouvelle migration
 npm run seed:mais          # Générer des données de capteurs pour la plantation Maïs de Test User
+npm run test:email         # Tester la configuration SMTP et l'envoi d'emails
 ```
 
 ## Technologies utilisées
@@ -104,8 +100,7 @@ npm run seed:mais          # Générer des données de capteurs pour la plantati
 - **bcrypt** - Hashage des mots de passe
 - **Helmet** - Sécurisation des headers HTTP
 - **express-validator** - Validation des données
-- **nodemailer** - Envoi d'emails
-- **twilio** - Notifications WhatsApp
+- **nodemailer** - Envoi d'emails via SMTP (notifications email)
 - **multer** - Upload de fichiers
 
 ## API Endpoints
@@ -171,10 +166,33 @@ npm run seed:mais          # Générer des données de capteurs pour la plantati
 | Méthode | Endpoint | Description | Accès |
 |---------|----------|-------------|-------|
 | GET | `/my` | Lister les notifications (option: `?unreadOnly=true`) | Privé |
-| GET | `/stats` | Statistiques des notifications | Privé |
+| GET | `/web` | Lister uniquement les notifications web (option: `?unreadOnly=true`) | Privé |
+| GET | `/stats` | Statistiques des notifications (total, envoyees, enAttente, erreurs, nonLues, lues, parCanal) | Privé |
 | GET | `/:notificationId` | Obtenir une notification spécifique | Privé |
 | PATCH | `/:notificationId/read` | Marquer une notification comme lue | Privé |
 | DELETE | `/:id` | Supprimer une notification | Privé |
+
+**Format de réponse pour GET /api/v1/notifications/stats :**
+```json
+{
+  "total": 150,
+  "envoyees": 140,
+  "enAttente": 5,
+  "erreurs": 5,
+  "nonLues": 25,
+  "lues": 125,
+  "parCanal": {
+    "web": 100,
+    "email": 30,
+    "whatsapp": 0
+  }
+}
+```
+
+**Notes importantes :**
+- Les notifications incluent les relations `event.sensor.plantation` et `event.actuator.plantation` pour l'enrichissement des données
+- Les notifications email sont créées automatiquement si l'utilisateur a une adresse email
+- Les notifications sont limitées à 50 par défaut, triées par date décroissante
 
 ### Dashboard Technique (`/api/v1/technician`)
 
@@ -223,7 +241,7 @@ GET /api/v1/technician/farmers?search[]=Jean&search[]=Dupont
 **Format de réponse :**
 ```json
 [
-  {
+{
     "id": "uuid",
     "firstName": "Jean",
     "lastName": "Dupont",
@@ -250,13 +268,14 @@ GET /api/v1/technician/farmers?search[]=Jean&search[]=Dupont
   "success": true,
   "data": [
     {
-      "id": "uuid",
+    "id": "uuid",
       "phone": "+237612345678",
       "email": "user@example.com",
       "firstName": "Jean",
       "lastName": "Dupont",
       "role": "farmer",
       "twoFactorEnabled": false,
+      "isActive": true,
       "createdAt": "2024-01-01T00:00:00.000Z",
       "plantationsCount": 3
     }
@@ -269,23 +288,24 @@ GET /api/v1/technician/farmers?search[]=Jean&search[]=Dupont
 {
   "success": true,
   "data": {
-    "id": "uuid",
+  "id": "uuid",
     "phone": "+237612345678",
     "email": "user@example.com",
     "firstName": "Jean",
     "lastName": "Dupont",
-    "role": "farmer",
-    "twoFactorEnabled": false,
-    "createdAt": "2024-01-01T00:00:00.000Z",
-    "updatedAt": "2024-01-01T00:00:00.000Z",
-    "plantations": [
-      {
-        "id": "uuid",
+      "role": "farmer",
+      "twoFactorEnabled": false,
+      "isActive": true,
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z",
+      "plantations": [
+  {
+    "id": "uuid",
         "name": "Champ de manioc",
         "location": "Douala",
         "cropType": "manioc"
-      }
-    ]
+  }
+]
   }
 }
 ```
@@ -314,7 +334,7 @@ GET /api/v1/technician/farmers?search[]=Jean&search[]=Dupont
   "success": true,
   "message": "Statut du compte mis à jour avec succès",
   "data": {
-    "id": "uuid",
+  "id": "uuid",
     "isActive": false
   }
 }
@@ -333,11 +353,13 @@ GET /api/v1/technician/farmers?search[]=Jean&search[]=Dupont
 ## Fonctionnalités principales
 
 ### Authentification
-- Inscription et connexion avec JWT
+- Inscription et connexion avec JWT (connexion par email)
 - Authentification à deux facteurs (2FA) avec TOTP
 - Refresh tokens dans des cookies HttpOnly
 - Gestion des rôles (FARMER, TECHNICIAN, ADMIN)
 - Upload d'avatar utilisateur
+- Système d'activation/désactivation des comptes (`isActive`)
+- Vérification du statut du compte à chaque connexion et requête authentifiée
 
 ### Gestion des plantations
 - CRUD complet des plantations
@@ -352,7 +374,7 @@ GET /api/v1/technician/farmers?search[]=Jean&search[]=Dupont
 - Génération d'événements lorsque les seuils sont dépassés
 - Historique des lectures (100 dernières)
 - **Gestion automatique des statuts** : Les capteurs passent automatiquement à `INACTIVE` s'ils n'envoient pas de valeur depuis 1 heure, et redeviennent `ACTIVE` dès qu'ils envoient une nouvelle valeur
-- **Notifications de changement de statut** : Le propriétaire de la plantation reçoit automatiquement des notifications (WEB, WHATSAPP, EMAIL) lorsque ses capteurs changent de statut (ACTIVE ↔ INACTIVE)
+- **Notifications de changement de statut** : Le propriétaire de la plantation reçoit automatiquement des notifications (WEB, EMAIL) lorsque ses capteurs changent de statut (ACTIVE ↔ INACTIVE)
 
 ### Actionneurs
 - Types : pompe, ventilateur, éclairage
@@ -364,10 +386,13 @@ GET /api/v1/technician/farmers?search[]=Jean&search[]=Dupont
 - Association automatique aux notifications
 
 ### Notifications
-- Multi-canaux : WEB, EMAIL, WHATSAPP
+- Multi-canaux : WEB, EMAIL
 - Gestion de l'état de lecture (lu/non lu)
-- Statistiques des notifications
+- Statistiques complètes des notifications (total, envoyees, enAttente, erreurs, nonLues, lues, parCanal)
 - Envoi automatique lors d'événements
+- **Notifications Email** : Envoi automatique d'emails via SMTP (Gmail, etc.) avec templates HTML
+- **Notifications Web** : Affichage dans l'interface web avec endpoint dédié `/web`
+- Enrichissement automatique avec informations de plantation, capteurs et actionneurs
 
 ## Configuration des seuils de capteurs
 
@@ -413,7 +438,7 @@ Les seuils saisonniers sont stockés dans `metadata.seasonalThresholds` avec la 
     "transition": { "min": 20, "max": 30 }
   },
   "currentSeason": "dry_season"
-}
+  }
 ```
 
 Les seuils par défaut (`seuilMin`/`seuilMax`) sont mis à jour automatiquement selon la saison actuelle lors de la migration.
@@ -465,12 +490,15 @@ npm run seed:mais
 | `1700000015000` | Lectures pour "Champ de manioc Nord" |
 | `1700000016000` | Ajout authentification 2FA |
 | `1700000017000` | Ajout capteurs manquants et seuils saisonniers pour "Champ de test" |
+| `1700000018000` | Ajout lectures de capteurs pour "Nouveau Champ de Test" |
+| `1700000019000` | Activation des capteurs inactifs via lectures récentes |
+| `1700000020000` | Ajout champ isActive aux utilisateurs (activation/désactivation) |
 
 ## Base de données
 
 ### Tables principales
 
-- **users** : Utilisateurs (phone, email, password hashé, role, 2FA)
+- **users** : Utilisateurs (phone, email, password hashé, role, 2FA, isActive)
 - **plantations** : Plantations (name, location, area en m², cropType, mode)
 - **sensors** : Capteurs (type, status, seuilMin, seuilMax, metadata JSONB pour seuils saisonniers)
 - **sensor_readings** : Lectures de capteurs (value, timestamp)
@@ -509,10 +537,13 @@ Consultez [SECURITE.md](./SECURITE.md) pour plus de détails.
 - [x] Gestion automatique des statuts des capteurs (ACTIVE/INACTIVE basés sur l'activité)
 - [x] Gestion des actionneurs (pompe, ventilateur, éclairage)
 - [x] Système d'événements (seuils, actionneurs, mode)
-- [x] Notifications multi-canaux (WEB, EMAIL, WHATSAPP)
+- [x] Notifications multi-canaux (WEB, EMAIL)
+- [x] Notifications email avec templates HTML et configuration SMTP
 - [x] Upload d'avatar utilisateur
 - [x] Script de génération de données de test (`seed:mais`)
 - [x] Dashboard technique pour les techniciens (statistiques, liste des agriculteurs, champs par agriculteur)
+- [x] Fonctionnalités administrateur (gestion des utilisateurs, création de techniciens, activation/désactivation de comptes)
+- [x] Système d'activation/désactivation des comptes utilisateurs (`isActive`)
 
 ### 🔄 En cours / À faire
 
@@ -525,10 +556,9 @@ Consultez [SECURITE.md](./SECURITE.md) pour plus de détails.
 ## Documentation complémentaire
 
 - [CONFIGURATION_EMAIL.md](./CONFIGURATION_EMAIL.md) - Guide de configuration SMTP Gmail
+- [DOCUMENTATION_NOTIFICATIONS_EMAIL.md](./DOCUMENTATION_NOTIFICATIONS_EMAIL.md) - Documentation technique complète du système de notifications par email
 - [SECURITE.md](./SECURITE.md) - Mesures de sécurité détaillées
-- [DOCUMENTATION_FRONTEND_SENSOR_STATUS.md](./DOCUMENTATION_FRONTEND_SENSOR_STATUS.md) - Documentation complète pour le frontend sur la gestion automatique des statuts des capteurs
-- [DOCUMENTATION_FRONTEND_NOTIFICATIONS_SENSOR_STATUS.md](./DOCUMENTATION_FRONTEND_NOTIFICATIONS_SENSOR_STATUS.md) - Documentation complète pour le frontend sur les notifications de changement de statut des capteurs
-- [DOCUMENTATION_MIGRATIONS_ACTIVATION_CAPTEURS.md](./DOCUMENTATION_MIGRATIONS_ACTIVATION_CAPTEURS.md) - Guide pour activer des capteurs inactifs via des migrations
+- [README_FRONTEND_ADMIN.md](./README_FRONTEND_ADMIN.md) - Documentation complète pour le frontend sur les fonctionnalités administrateur
 
 ## Contribution
 
