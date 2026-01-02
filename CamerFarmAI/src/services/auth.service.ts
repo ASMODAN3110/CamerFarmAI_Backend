@@ -18,7 +18,7 @@ if (!JWT_SECRET) {
 
 export class AuthService {
     // 1. Inscription
-    static async register(dto: RegisterDto): Promise<User> {
+    static async register(dto: RegisterDto, role?: UserRole): Promise<User> {
       const { phone, password, firstName, lastName, email } = dto;
   
       // Vérifier si le téléphone existe déjà
@@ -34,7 +34,7 @@ export class AuthService {
         firstName,
         lastName,
         email: email || null,
-        role: UserRole.FARMER, // par défaut
+        role: role || UserRole.FARMER, // utiliser le rôle fourni ou FARMER par défaut
       });
   
       return await userRepository.save(user);
@@ -43,6 +43,9 @@ export class AuthService {
   static async validateUser(email: string, plainPassword: string): Promise<User | null> {
     const user = await userRepository.findOne({ where: { email } });
     if (!user) return null;
+
+    // Vérifier que le compte est actif
+    if (!user.isActive) return null;
 
     const isPasswordValid = await user.validatePassword(plainPassword);
     if (!isPasswordValid) return null;

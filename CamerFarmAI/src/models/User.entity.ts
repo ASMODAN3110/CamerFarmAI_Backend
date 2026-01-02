@@ -53,13 +53,16 @@ export class User {
   @Column({ type: 'boolean', default: false })
   twoFactorEnabled!: boolean;
 
+  @Column({ type: 'boolean', default: true })
+  isActive!: boolean;
+
   @CreateDateColumn()
   createdAt!: Date;
 
   @UpdateDateColumn()
   updatedAt!: Date;
 
-  @OneToMany(() => Plantation, plantation => plantation.owner)
+  @OneToMany(() => Plantation, plantation => plantation.owner, { onDelete: 'CASCADE' })
   plantations!: Plantation[];
 
   @BeforeInsert()
