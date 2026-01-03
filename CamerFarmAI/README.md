@@ -362,6 +362,7 @@ GET /api/v1/technician/farmers?search[]=Jean&search[]=Dupont
 - Système d'activation/désactivation des comptes (`isActive`)
 - Vérification du statut du compte à chaque connexion et requête authentifiée
 - Réinitialisation de mot de passe par email avec token JWT temporaire (expiration 1h)
+- Email de bienvenue automatique lors de l'inscription (si email fourni et SMTP configuré)
 
 ### Gestion des plantations
 - CRUD complet des plantations

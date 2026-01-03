@@ -8,6 +8,8 @@ import { HttpException } from '../utils/HttpException';
 import * as speakeasy from 'speakeasy';
 import * as QRCode from 'qrcode';
 import * as bcrypt from 'bcrypt';
+import * as nodemailer from 'nodemailer';
+import { generateWelcomeEmailTemplate } from './notification/welcome-email-templates';
 
 const userRepository = AppDataSource.getRepository(User);
 
@@ -275,5 +277,83 @@ export class AuthService {
     // Mettre à jour le mot de passe
     user.password = hashedPassword;
     return await userRepository.save(user);
+  }
+
+  // 12. Envoyer un email de bienvenue à un nouvel utilisateur
+  static async sendWelcomeEmail(user: User): Promise<void> {
+    // Vérifier que l'utilisateur a un email
+    if (!user.email) {
+      console.log(`ℹ️  Utilisateur ${user.id} n'a pas d'adresse email - email de bienvenue ignoré`);
+      return;
+    }
+
+    // Vérifier la configuration SMTP
+    const smtpHost = process.env.SMTP_HOST;
+    const smtpPort = process.env.SMTP_PORT;
+    const smtpUser = process.env.SMTP_USER;
+    const smtpPass = process.env.SMTP_PASS;
+
+    if (!smtpHost || !smtpPort || !smtpUser || !smtpPass) {
+      console.log('ℹ️  SMTP non configuré - email de bienvenue ignoré');
+      return;
+    }
+
+    try {
+      // Créer le transporteur Nodemailer
+      const port = parseInt(smtpPort, 10);
+      const secure = port === 465;
+
+      const transporterConfig: any = {
+        host: smtpHost,
+        port: port,
+        secure: secure,
+        auth: {
+          user: smtpUser,
+          pass: smtpPass,
+        },
+      };
+
+      // Pour le port 587 (STARTTLS), ajouter la configuration TLS
+      if (port === 587) {
+        transporterConfig.requireTLS = true;
+        transporterConfig.tls = {
+          rejectUnauthorized: false, // Accepter les certificats auto-signés en développement
+        };
+      } else if (port === 465) {
+        // Pour le port 465 (SSL), s'assurer que TLS est correctement configuré
+        transporterConfig.tls = {
+          rejectUnauthorized: false, // Accepter les certificats auto-signés en développement
+        };
+      }
+
+      const transporter = nodemailer.createTransport(transporterConfig);
+
+      // Préparer le nom de l'utilisateur
+      const userName = user.firstName && user.lastName 
+        ? `${user.firstName} ${user.lastName}` 
+        : user.firstName || user.lastName || 'Utilisateur';
+
+      // Générer le template d'email
+      const { html, text } = generateWelcomeEmailTemplate(userName, user.email, user.role);
+
+      // Préparer l'email
+      const smtpFrom = process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@camerfarmai.com';
+      
+      const mailOptions: any = {
+        from: smtpFrom,
+        to: user.email,
+        subject: 'Bienvenue sur CamerFarmAI !',
+        html: html,
+        text: text,
+      };
+
+      // Envoyer l'email
+      await transporter.sendMail(mailOptions);
+      console.log(`✅ Email de bienvenue envoyé à ${user.email}`);
+    } catch (error: any) {
+      // Logger l'erreur mais ne pas propager (inscription ne doit pas échouer)
+      console.error(`❌ Erreur lors de l'envoi de l'email de bienvenue à ${user.email}:`, error?.message || error);
+      // Ne pas propager l'erreur pour ne pas bloquer l'inscription
+    }
   }
 }

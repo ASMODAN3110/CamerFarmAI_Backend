@@ -27,6 +27,12 @@ export const register = async (req: Request, res: Response) => {
   try {
     const user = await AuthService.register(dto);
 
+    // Envoyer l'email de bienvenue (non bloquant - ne doit pas faire échouer l'inscription)
+    AuthService.sendWelcomeEmail(user).catch((err: any) => {
+      console.error('Erreur envoi email de bienvenue (non bloquant):', err?.message || err);
+      // Ne pas propager l'erreur - l'inscription continue normalement
+    });
+
     // On génère les tokens tout de suite
     const { accessToken, refreshToken } = AuthService.generateTokens(user);
 
