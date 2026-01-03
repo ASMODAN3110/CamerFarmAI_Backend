@@ -7,6 +7,7 @@ import type { SignOptions } from 'jsonwebtoken';
 import { HttpException } from '../utils/HttpException';
 import * as speakeasy from 'speakeasy';
 import * as QRCode from 'qrcode';
+import * as bcrypt from 'bcrypt';
 
 const userRepository = AppDataSource.getRepository(User);
 
@@ -253,6 +254,26 @@ export class AuthService {
     // Désactiver le 2FA et supprimer le secret
     user.twoFactorEnabled = false;
     user.twoFactorSecret = null;
+    return await userRepository.save(user);
+  }
+
+  // 11. Réinitialiser le mot de passe d'un utilisateur
+  static async resetPassword(userId: string, newPassword: string): Promise<User> {
+    const user = await userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new HttpException(404, 'Utilisateur non trouvé');
+    }
+
+    // Vérifier que le compte est actif
+    if (!user.isActive) {
+      throw new HttpException(403, 'Impossible de réinitialiser le mot de passe d\'un compte désactivé');
+    }
+
+    // Hasher le nouveau mot de passe (utiliser bcrypt directement car @BeforeInsert ne s'exécute que sur insert)
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
+    
+    // Mettre à jour le mot de passe
+    user.password = hashedPassword;
     return await userRepository.save(user);
   }
 }

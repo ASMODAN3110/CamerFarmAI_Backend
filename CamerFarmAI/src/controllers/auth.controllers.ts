@@ -1,11 +1,12 @@
 // src/controllers/auth.controller.ts
 import { Request, Response } from 'express';
 import { AuthService } from '../services/auth.service';
-import { RegisterDto, LoginDto, UpdateProfileDto } from '../types/auth.types';
+import { RegisterDto, LoginDto, UpdateProfileDto, ForgotPasswordDto, ResetPasswordDto } from '../types/auth.types';
 import { validationResult } from 'express-validator';
 import { HttpException } from '../utils/HttpException';
 import { AppDataSource } from '../config/database';
 import { User } from '../models/User.entity';
+import { PasswordResetService } from '../services/password-reset.service';
 
 /**
  * POST /api/v1/auth/register
@@ -612,6 +613,132 @@ export const verifyTwoFactorLogin = async (req: Request, res: Response) => {
     return res.status(500).json({
       success: false,
       message: error?.message || 'Erreur serveur lors de la vérification 2FA',
+    });
+  }
+};
+
+/**
+ * POST /api/v1/auth/forgot-password
+ * Demande de réinitialisation de mot de passe
+ */
+export const forgotPassword = async (req: Request, res: Response) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: 'Données invalides',
+      errors: errors.array(),
+    });
+  }
+
+  const { email }: ForgotPasswordDto = req.body;
+
+  try {
+    // Trouver l'utilisateur par email
+    const userRepository = AppDataSource.getRepository(User);
+    const user = await userRepository.findOne({ where: { email } });
+
+    // Toujours retourner succès pour ne pas révéler si l'email existe (sécurité)
+    // Si l'utilisateur existe ET a un email, générer le token et envoyer l'email
+    if (user && user.email) {
+      try {
+        // Générer le token de réinitialisation
+        const resetToken = PasswordResetService.generateResetToken(user.id);
+
+        // Envoyer l'email de réinitialisation
+        await PasswordResetService.sendPasswordResetEmail(user, resetToken);
+      } catch (error: any) {
+        // Logger l'erreur mais ne pas révéler à l'utilisateur
+        console.error('Erreur lors de l\'envoi de l\'email de réinitialisation:', error?.message);
+        // Continuer à retourner succès pour la sécurité
+      }
+    }
+
+    // Toujours retourner le même message de succès
+    return res.status(200).json({
+      success: true,
+      message: 'Si cet email existe dans notre système, un lien de réinitialisation a été envoyé.',
+    });
+  } catch (error: any) {
+    console.error('Erreur forgot-password:', error);
+    
+    // Même en cas d'erreur, retourner succès pour la sécurité
+    return res.status(200).json({
+      success: true,
+      message: 'Si cet email existe dans notre système, un lien de réinitialisation a été envoyé.',
+    });
+  }
+};
+
+/**
+ * POST /api/v1/auth/reset-password
+ * Réinitialisation du mot de passe avec token
+ */
+export const resetPassword = async (req: Request, res: Response) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: 'Données invalides',
+      errors: errors.array(),
+    });
+  }
+
+  const { token, newPassword }: ResetPasswordDto = req.body;
+
+  try {
+    // Vérifier le token de réinitialisation
+    const tokenData = PasswordResetService.verifyResetToken(token);
+    if (!tokenData) {
+      return res.status(401).json({
+        success: false,
+        message: 'Token de réinitialisation invalide ou expiré. Veuillez demander un nouveau lien.',
+      });
+    }
+
+    // Récupérer l'utilisateur
+    const userRepository = AppDataSource.getRepository(User);
+    const user = await userRepository.findOne({ where: { id: tokenData.userId } });
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Utilisateur non trouvé',
+      });
+    }
+
+    // Vérifier que le compte est actif
+    if (!user.isActive) {
+      return res.status(403).json({
+        success: false,
+        message: 'Impossible de réinitialiser le mot de passe d\'un compte désactivé',
+      });
+    }
+
+    // Réinitialiser le mot de passe
+    await AuthService.resetPassword(user.id, newPassword);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Votre mot de passe a été réinitialisé avec succès. Vous pouvez maintenant vous connecter.',
+    });
+  } catch (error: any) {
+    console.error('Erreur reset-password:', error);
+    
+    if (error instanceof HttpException) {
+      return res.status(error.statusCode).json({
+        success: false,
+        message: error.message,
+      });
+    }
+    
+    return res.status(500).json({
+      success: false,
+      message: error?.message || 'Erreur serveur lors de la réinitialisation du mot de passe',
+      ...(process.env.NODE_ENV === 'development' && { 
+        error: error?.message,
+        stack: error?.stack 
+      }),
     });
   }
 };
