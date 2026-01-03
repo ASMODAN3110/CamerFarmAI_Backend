@@ -113,6 +113,8 @@ npm run test:email         # Tester la configuration SMTP et l'envoi d'emails
 | POST | `/login` | Connexion utilisateur | Public |
 | POST | `/login/verify-2fa` | Vérifier le code 2FA et compléter la connexion | Public |
 | POST | `/refresh` | Rafraîchir le token d'accès | Public |
+| POST | `/forgot-password` | Demande de réinitialisation de mot de passe (envoie un email) | Public |
+| POST | `/reset-password` | Réinitialiser le mot de passe avec token | Public |
 | GET | `/me` | Récupérer les infos de l'utilisateur connecté | Privé |
 | PUT | `/profile` | Mettre à jour le profil utilisateur | Privé |
 | POST | `/profile/avatar` | Upload de l'avatar utilisateur | Privé |
@@ -183,8 +185,7 @@ npm run test:email         # Tester la configuration SMTP et l'envoi d'emails
   "lues": 125,
   "parCanal": {
     "web": 100,
-    "email": 30,
-    "whatsapp": 0
+    "email": 30
   }
 }
 ```
@@ -360,6 +361,8 @@ GET /api/v1/technician/farmers?search[]=Jean&search[]=Dupont
 - Upload d'avatar utilisateur
 - Système d'activation/désactivation des comptes (`isActive`)
 - Vérification du statut du compte à chaque connexion et requête authentifiée
+- Réinitialisation de mot de passe par email avec token JWT temporaire (expiration 1h)
+- Email de bienvenue automatique lors de l'inscription (si email fourni et SMTP configuré)
 
 ### Gestion des plantations
 - CRUD complet des plantations
@@ -393,6 +396,7 @@ GET /api/v1/technician/farmers?search[]=Jean&search[]=Dupont
 - **Notifications Email** : Envoi automatique d'emails via SMTP (Gmail, etc.) avec templates HTML
 - **Notifications Web** : Affichage dans l'interface web avec endpoint dédié `/web`
 - Enrichissement automatique avec informations de plantation, capteurs et actionneurs
+- Isolation des canaux : si un canal échoue, les autres continuent de fonctionner
 
 ## Configuration des seuils de capteurs
 
@@ -549,7 +553,6 @@ Consultez [SECURITE.md](./SECURITE.md) pour plus de détails.
 
 - [ ] Tests unitaires et d'intégration
 - [ ] Documentation API (Swagger/OpenAPI)
-- [ ] Réinitialisation de mot de passe
 - [ ] Rate limiting avancé
 - [ ] Logging structuré
 

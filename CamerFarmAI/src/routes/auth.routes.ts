@@ -208,18 +208,48 @@ authRouter.post('/2fa/enable', protectRoute, validateTwoFactorToken, authControl
  */
 authRouter.post('/2fa/disable', protectRoute, validateTwoFactorToken, authController.disableTwoFactor);
 
+// Middlewares de validation pour la réinitialisation de mot de passe
+const validateForgotPassword = [
+  body('email')
+    .notEmpty()
+    .withMessage('L\'email est requis')
+    .isEmail()
+    .withMessage('L\'email doit être valide'),
+];
+
+const validateResetPassword = [
+  body('token')
+    .notEmpty()
+    .withMessage('Le token de réinitialisation est requis')
+    .isString()
+    .withMessage('Le token doit être une chaîne de caractères'),
+  body('newPassword')
+    .notEmpty()
+    .withMessage('Le nouveau mot de passe est requis')
+    .isLength({ min: 8 })
+    .withMessage('Le mot de passe doit contenir au moins 8 caractères')
+    .matches(/[A-Z]/)
+    .withMessage('Le mot de passe doit contenir au moins une lettre majuscule')
+    .matches(/[a-z]/)
+    .withMessage('Le mot de passe doit contenir au moins une lettre minuscule')
+    .matches(/[0-9]/)
+    .withMessage('Le mot de passe doit contenir au moins un nombre')
+    .matches(/[!@#$%^&*(),.?":{}|<>]/)
+    .withMessage('Le mot de passe doit contenir au moins un caractère spécial'),
+];
+
 /**
  * @route   POST /api/v1/auth/forgot-password
- * @desc    (Optionnel Sprint 2) Demande de réinitialisation mot de passe par SMS
+ * @desc    Demande de réinitialisation de mot de passe par email
  * @access  Public
  */
-// authRouter.post('/forgot-password', authController.forgotPassword);
+authRouter.post('/forgot-password', validateForgotPassword, sanitizeInput, authController.forgotPassword);
 
 /**
  * @route   POST /api/v1/auth/reset-password
- * @desc    (Optionnel Sprint 2) Réinitialisation avec code SMS
+ * @desc    Réinitialisation du mot de passe avec token
  * @access  Public
  */
-// authRouter.post('/reset-password', authController.resetPassword);
+authRouter.post('/reset-password', validateResetPassword, sanitizeInput, authController.resetPassword);
 
 export default authRouter;
