@@ -68,7 +68,7 @@ export const protectRoute = async (
     const userRepository = AppDataSource.getRepository(User);
     const currentUser = await userRepository.findOne({
       where: { id: userId },
-      select: ['id', 'phone', 'firstName', 'lastName', 'email', 'role', 'isActive', 'createdAt', 'updatedAt'],
+      select: ['id', 'phone', 'firstName', 'lastName', 'email', 'role', 'isActive', 'avatarUrl', 'createdAt', 'updatedAt'],
     });
 
     if (!currentUser) {
@@ -128,7 +128,7 @@ export const optionalAuth = async (
       const userRepository = AppDataSource.getRepository(User);
       const user = await userRepository.findOne({
           where: { id: userId },
-          select: ['id', 'phone', 'firstName', 'lastName', 'email', 'role', 'isActive', 'createdAt', 'updatedAt'],
+          select: ['id', 'phone', 'firstName', 'lastName', 'email', 'role', 'isActive', 'avatarUrl', 'createdAt', 'updatedAt'],
       });
 
       // Ne pas attacher l'utilisateur si le compte est désactivé
