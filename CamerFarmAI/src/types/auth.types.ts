@@ -21,3 +21,14 @@ export class RegisterDto {
     lastName?: string;
     email?: string;
   }
+
+  // ForgotPasswordDto
+  export interface ForgotPasswordDto {
+    email: string;
+  }
+
+  // ResetPasswordDto
+  export interface ResetPasswordDto {
+    token: string;
+    newPassword: string;
+  }
