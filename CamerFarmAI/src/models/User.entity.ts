@@ -16,6 +16,10 @@ export enum UserRole {
   ADMIN = 'admin',
 }
 
+export enum AuthProvider {
+  LOCAL = 'local',
+}
+
 @Entity('users')
 export class User {
   @PrimaryGeneratedColumn('uuid')
@@ -44,8 +48,15 @@ export class User {
   })
   role!: UserRole;
 
-  @Column()
-  password!: string;
+  @Column({ type: 'varchar', nullable: true })
+  password!: string | null;
+
+  @Column({
+    type: 'enum',
+    enum: AuthProvider,
+    default: AuthProvider.LOCAL,
+  })
+  authProvider!: AuthProvider;
 
   @Column({ type: 'varchar', nullable: true })
   twoFactorSecret!: string | null;
@@ -55,6 +66,9 @@ export class User {
 
   @Column({ type: 'boolean', default: true })
   isActive!: boolean;
+
+  @Column({ type: 'varchar', nullable: true })
+  avatarUrl!: string | null;
 
   @CreateDateColumn()
   createdAt!: Date;
@@ -67,10 +81,16 @@ export class User {
 
   @BeforeInsert()
   async hashPassword() {
-    this.password = await bcrypt.hash(this.password, 12);
+    // Ne hasher le mot de passe que s'il est fourni
+    if (this.password) {
+      this.password = await bcrypt.hash(this.password, 12);
+    }
   }
 
   async validatePassword(plainPassword: string): Promise<boolean> {
+    if (!this.password) {
+      return false;
+    }
     return bcrypt.compare(plainPassword, this.password);
   }
 }

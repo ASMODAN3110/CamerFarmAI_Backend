@@ -7,6 +7,8 @@ import { HttpException } from '../utils/HttpException';
 import { AppDataSource } from '../config/database';
 import { User } from '../models/User.entity';
 import { PasswordResetService } from '../services/password-reset.service';
+import fs from 'fs';
+import path from 'path';
 
 /**
  * POST /api/v1/auth/register
@@ -54,6 +56,7 @@ export const register = async (req: Request, res: Response) => {
           firstName: user.firstName,
           lastName: user.lastName,
           role: user.role,
+          avatarUrl: user.avatarUrl,
         },
         accessToken,
       },
@@ -148,6 +151,7 @@ export const login = async (req: Request, res: Response) => {
           firstName: user.firstName,
           lastName: user.lastName,
           role: user.role,
+          avatarUrl: user.avatarUrl,
         },
         accessToken,
       },
@@ -216,7 +220,7 @@ export const getMe = async (req: Request, res: Response) => {
   const userRepository = AppDataSource.getRepository(User);
   const fullUser = await userRepository.findOne({
     where: { id: user.id },
-    select: ['id', 'phone', 'firstName', 'lastName', 'email', 'role', 'twoFactorEnabled', 'createdAt'],
+    select: ['id', 'phone', 'firstName', 'lastName', 'email', 'role', 'twoFactorEnabled', 'avatarUrl', 'createdAt'],
   });
 
   if (!fullUser) {
@@ -236,6 +240,7 @@ export const getMe = async (req: Request, res: Response) => {
       email: fullUser.email,
       role: fullUser.role,
       twoFactorEnabled: fullUser.twoFactorEnabled,
+      avatarUrl: fullUser.avatarUrl,
       createdAt: fullUser.createdAt,
     },
   });
@@ -347,18 +352,62 @@ export const uploadAvatar = async (req: Request, res: Response) => {
 
   const file = anyReq.file;
 
-  // Construire l'URL publique de l'avatar
-  const baseUrl = `${req.protocol}://${req.get('host')}`;
-  const avatarUrl = `${baseUrl}/uploads/avatars/${file.filename}`;
+  try {
+    // Récupérer l'utilisateur complet depuis la base de données
+    const userRepository = AppDataSource.getRepository(User);
+    const fullUser = await userRepository.findOne({ where: { id: user.id } });
 
-  return res.status(201).json({
-    success: true,
-    message: 'Avatar uploadé avec succès',
-    data: {
-      userId: user.id,
-      avatarUrl,
-    },
-  });
+    if (!fullUser) {
+      return res.status(404).json({
+        success: false,
+        message: 'Utilisateur non trouvé',
+      });
+    }
+
+    // Construire l'URL publique de l'avatar
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const avatarUrl = `${baseUrl}/uploads/avatars/${file.filename}`;
+
+    // Supprimer l'ancien fichier avatar s'il existe
+    if (fullUser.avatarUrl) {
+      try {
+        // Extraire le nom de fichier depuis l'URL complète
+        const oldFileName = fullUser.avatarUrl.split('/uploads/avatars/')[1];
+        if (oldFileName) {
+          const oldFilePath = path.join(__dirname, '..', '..', 'uploads', 'avatars', oldFileName);
+          // Vérifier que le fichier existe avant de le supprimer
+          if (fs.existsSync(oldFilePath)) {
+            fs.unlinkSync(oldFilePath);
+          }
+        }
+      } catch (error) {
+        // Ne pas faire échouer l'upload si la suppression de l'ancien fichier échoue
+        console.error('Erreur lors de la suppression de l\'ancien avatar:', error);
+      }
+    }
+
+    // Mettre à jour l'URL de l'avatar dans la base de données
+    fullUser.avatarUrl = avatarUrl;
+    await userRepository.save(fullUser);
+
+    return res.status(201).json({
+      success: true,
+      message: 'Avatar uploadé avec succès',
+      data: {
+        userId: fullUser.id,
+        avatarUrl,
+      },
+    });
+  } catch (error: any) {
+    console.error('Erreur lors de l\'upload de l\'avatar:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la sauvegarde de l\'avatar',
+      ...(process.env.NODE_ENV === 'development' && { 
+        error: error?.message 
+      }),
+    });
+  }
 };
 
 /**
@@ -748,3 +797,4 @@ export const resetPassword = async (req: Request, res: Response) => {
     });
   }
 };
+
