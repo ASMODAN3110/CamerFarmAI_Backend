@@ -144,3 +144,6 @@ L'équipe CamerFarmAI est là pour vous accompagner.
   return { html, text };
 }
 
+
+
+
