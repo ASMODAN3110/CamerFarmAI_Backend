@@ -12,6 +12,7 @@ import { Actuator } from './Actuator.entity';
 
 export enum EventType {
   SEUIL_DEPASSE = 'seuil_depasse',
+  THRESHOLD_CHANGED = 'threshold_changed',
   ACTIONNEUR_ACTIVE = 'actionneur_active',
   ACTIONNEUR_DESACTIVE = 'actionneur_desactive',
   MODE_CHANGED = 'mode_changed',

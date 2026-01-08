@@ -105,6 +105,7 @@ Vous recevez cet email car vous êtes propriétaire de cette plantation.
 export function getEventTypeLabel(eventType: string): string {
   const labels: Record<string, string> = {
     'seuil_depasse': '🚨 Alerte : Seuil Dépassé',
+    'threshold_changed': '📊 Modification des Seuils',
     'actionneur_active': '✅ Actionneur Activé',
     'actionneur_desactive': '⏸️ Actionneur Désactivé',
     'mode_changed': '🔄 Changement de Mode',

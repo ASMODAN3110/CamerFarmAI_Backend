@@ -105,6 +105,22 @@ export const login = async (req: Request, res: Response) => {
   const { email, password }: LoginDto = req.body;
 
   try {
+    // Vérifier d'abord si l'utilisateur existe et son statut actif
+    const userRepository = AppDataSource.getRepository(User);
+    const existingUser = await userRepository.findOne({
+      where: { email },
+      select: ['id', 'isActive', 'password', 'twoFactorEnabled'],
+    });
+
+    // Si l'utilisateur existe mais est désactivé, retourner un message spécifique
+    if (existingUser && !existingUser.isActive) {
+      return res.status(401).json({
+        success: false,
+        message: 'Votre compte a été désactivé. Veuillez contacter l\'administrateur du système pour plus d\'informations.',
+        errorCode: 'ACCOUNT_DISABLED',
+      });
+    }
+
     // Note: Le service utilise phone, mais LoginDto utilise email
     // Vous devrez adapter selon votre logique métier
     // Pour l'instant, on utilise email comme identifiant
@@ -604,7 +620,8 @@ export const verifyTwoFactorLogin = async (req: Request, res: Response) => {
     if (!user.isActive) {
       return res.status(401).json({
         success: false,
-        message: 'Email ou mot de passe incorrect',
+        message: 'Votre compte a été désactivé. Veuillez contacter l\'administrateur du système pour plus d\'informations.',
+        errorCode: 'ACCOUNT_DISABLED',
       });
     }
 

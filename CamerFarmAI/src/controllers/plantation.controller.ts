@@ -518,9 +518,70 @@ export const updateSensorThresholds = async (req: Request, res: Response) => {
   // Les valeurs sont déjà validées par le middleware validateSensorThresholds
   const { seuilMin, seuilMax }: UpdateSensorThresholdPayload = req.body;
 
+  // Sauvegarder les anciens seuils pour la description de l'événement
+  const oldSeuilMin = sensor.seuilMin;
+  const oldSeuilMax = sensor.seuilMax;
+
   try {
     sensor.modifierSeuil(seuilMin, seuilMax);
     await sensorRepo.save(sensor);
+    
+    // Vérifier si les seuils ont réellement changé avant de créer un événement
+    const thresholdsChanged = 
+      oldSeuilMin !== sensor.seuilMin || oldSeuilMax !== sensor.seuilMax;
+
+    // Générer un événement si les seuils ont changé
+    if (thresholdsChanged) {
+      try {
+        const { EventService } = require('../services/event/EventService');
+        const { EventType } = require('../models/Event.entity');
+
+        // Construire la description de l'événement
+        let description = `Les seuils du capteur ${sensor.type}`;
+        
+        // Gérer le cas où les seuils sont définis pour la première fois
+        if (oldSeuilMin === null && oldSeuilMax === null) {
+          description += ` ont été définis : Min ${sensor.seuilMin}, Max ${sensor.seuilMax}`;
+        } else {
+          // Construire la description avec les changements
+          const changes: string[] = [];
+          
+          if (oldSeuilMin !== sensor.seuilMin) {
+            if (oldSeuilMin === null) {
+              changes.push(`Min : ${sensor.seuilMin} (nouveau)`);
+            } else {
+              changes.push(`Min : ${oldSeuilMin} → ${sensor.seuilMin}`);
+            }
+          }
+          
+          if (oldSeuilMax !== sensor.seuilMax) {
+            if (oldSeuilMax === null) {
+              changes.push(`Max : ${sensor.seuilMax} (nouveau)`);
+            } else {
+              changes.push(`Max : ${oldSeuilMax} → ${sensor.seuilMax}`);
+            }
+          }
+          
+          if (changes.length > 0) {
+            description += ` ont été modifiés : ${changes.join(', ')}`;
+          } else {
+            description += ` ont été modifiés`;
+          }
+        }
+
+        const event = await EventService.createEvent(
+          EventType.THRESHOLD_CHANGED,
+          description,
+          sensor.id
+        );
+
+        // Traiter l'événement et envoyer les notifications au propriétaire
+        await EventService.processEvent(event, [ownerId]);
+      } catch (error) {
+        // Ne pas faire échouer la requête si la génération d'événement échoue
+        console.error('Erreur lors de la génération de l\'événement:', error);
+      }
+    }
     
     return res.json({
       id: sensor.id,
