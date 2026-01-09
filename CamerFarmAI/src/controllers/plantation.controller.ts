@@ -175,7 +175,7 @@ const updateSensorStatuses = async (plantationId: string) => {
         if (sensor.status !== SensorStatus.INACTIVE) {
           sensor.status = SensorStatus.INACTIVE;
           await sensorRepo.save(sensor);
-          
+
           // Créer un événement et envoyer une notification si le statut a changé
           if (oldStatus !== SensorStatus.INACTIVE) {
             try {
@@ -191,7 +191,7 @@ const updateSensorStatuses = async (plantationId: string) => {
         if (sensor.status !== SensorStatus.ACTIVE) {
           sensor.status = SensorStatus.ACTIVE;
           await sensorRepo.save(sensor);
-          
+
           // Créer un événement et envoyer une notification si le statut a changé
           if (oldStatus !== SensorStatus.ACTIVE) {
             try {
@@ -265,7 +265,7 @@ export const getOne = async (req: Request, res: Response) => {
       order: { createdAt: 'ASC' },
     }),
     actuatorRepo.find({
-    where: { plantationId: plantation.id },
+      where: { plantationId: plantation.id },
       order: { createdAt: 'DESC' },
     }),
   ]);
@@ -275,8 +275,8 @@ export const getOne = async (req: Request, res: Response) => {
     sensors.map(async (sensor) => {
       const latestReading = await sensorReadingRepo.findOne({
         where: { sensorId: sensor.id },
-    order: { timestamp: 'DESC' },
-  });
+        order: { timestamp: 'DESC' },
+      });
       return {
         sensorId: sensor.id,
         sensorType: sensor.type,
@@ -336,7 +336,7 @@ export const update = async (req: Request, res: Response) => {
 
       const modeLabel = mode === PlantationMode.AUTOMATIC ? 'automatique' : 'manuel';
       const oldModeLabel = oldMode === PlantationMode.AUTOMATIC ? 'automatique' : 'manuel';
-      
+
       const description = `Le mode de contrôle de la plantation "${plantation.name}" a été changé de ${oldModeLabel} à ${modeLabel}`;
 
       const event = await EventService.createEvent(
@@ -484,7 +484,7 @@ export const updateSensor = async (req: Request, res: Response) => {
         where: { id: plantation.id },
         relations: ['owner'],
       });
-      
+
       if (plantationWithOwner) {
         const { EventService } = require('../services/event/EventService');
         await EventService.notifySensorStatusChange(sensor, sensor.status, plantationWithOwner);
@@ -525,9 +525,9 @@ export const updateSensorThresholds = async (req: Request, res: Response) => {
   try {
     sensor.modifierSeuil(seuilMin, seuilMax);
     await sensorRepo.save(sensor);
-    
+
     // Vérifier si les seuils ont réellement changé avant de créer un événement
-    const thresholdsChanged = 
+    const thresholdsChanged =
       oldSeuilMin !== sensor.seuilMin || oldSeuilMax !== sensor.seuilMax;
 
     // Générer un événement si les seuils ont changé
@@ -537,15 +537,15 @@ export const updateSensorThresholds = async (req: Request, res: Response) => {
         const { EventType } = require('../models/Event.entity');
 
         // Construire la description de l'événement
-        let description = `Les seuils du capteur ${sensor.type}`;
-        
+        let description = `Les seuils du capteur ${sensor.type} du champ "${plantation.name}"`;
+
         // Gérer le cas où les seuils sont définis pour la première fois
         if (oldSeuilMin === null && oldSeuilMax === null) {
           description += ` ont été définis : Min ${sensor.seuilMin}, Max ${sensor.seuilMax}`;
         } else {
           // Construire la description avec les changements
           const changes: string[] = [];
-          
+
           if (oldSeuilMin !== sensor.seuilMin) {
             if (oldSeuilMin === null) {
               changes.push(`Min : ${sensor.seuilMin} (nouveau)`);
@@ -553,7 +553,7 @@ export const updateSensorThresholds = async (req: Request, res: Response) => {
               changes.push(`Min : ${oldSeuilMin} → ${sensor.seuilMin}`);
             }
           }
-          
+
           if (oldSeuilMax !== sensor.seuilMax) {
             if (oldSeuilMax === null) {
               changes.push(`Max : ${sensor.seuilMax} (nouveau)`);
@@ -561,7 +561,7 @@ export const updateSensorThresholds = async (req: Request, res: Response) => {
               changes.push(`Max : ${oldSeuilMax} → ${sensor.seuilMax}`);
             }
           }
-          
+
           if (changes.length > 0) {
             description += ` ont été modifiés : ${changes.join(', ')}`;
           } else {
@@ -582,7 +582,7 @@ export const updateSensorThresholds = async (req: Request, res: Response) => {
         console.error('Erreur lors de la génération de l\'événement:', error);
       }
     }
-    
+
     return res.json({
       id: sensor.id,
       type: sensor.type,
@@ -642,7 +642,7 @@ export const addSensorReading = async (req: Request, res: Response) => {
   if (sensor.status !== SensorStatus.ACTIVE) {
     sensor.status = SensorStatus.ACTIVE;
     await sensorRepo.save(sensor);
-    
+
     // Créer un événement et envoyer une notification si le statut a changé
     if (oldStatus !== SensorStatus.ACTIVE) {
       try {
@@ -651,7 +651,7 @@ export const addSensorReading = async (req: Request, res: Response) => {
           where: { id: plantation.id },
           relations: ['owner'],
         });
-        
+
         if (plantationWithOwner) {
           const { EventService } = require('../services/event/EventService');
           await EventService.notifySensorStatusChange(sensor, SensorStatus.ACTIVE, plantationWithOwner);
@@ -795,13 +795,12 @@ export const updateActuator = async (req: Request, res: Response) => {
       const { EventType } = require('../models/Event.entity');
       const { ActuatorStatus } = require('../models/Actuator.entity');
 
-      const eventType = status === ActuatorStatus.ACTIVE 
-        ? EventType.ACTIONNEUR_ACTIVE 
+      const eventType = status === ActuatorStatus.ACTIVE
+        ? EventType.ACTIONNEUR_ACTIVE
         : EventType.ACTIONNEUR_DESACTIVE;
-      
-      const description = status === ActuatorStatus.ACTIVE
-        ? `L'actionneur "${actuator.name}" (${actuator.type}) a été activé`
-        : `L'actionneur "${actuator.name}" (${actuator.type}) a été désactivé`;
+
+      const action = status === ActuatorStatus.ACTIVE ? 'activé' : 'désactivé';
+      const description = `L'actionneur "${actuator.name}" (${actuator.type}) du champ "${plantation.name}" a été ${action} manuellement`;
 
       const event = await EventService.createEvent(
         eventType,
@@ -820,3 +819,4 @@ export const updateActuator = async (req: Request, res: Response) => {
 
   return res.json(actuator);
 };
+
