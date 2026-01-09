@@ -130,7 +130,8 @@ export class EventService {
    */
   static async checkSensorThresholds(
     sensor: any,
-    reading: any
+    reading: any,
+    plantationName?: string
   ): Promise<Event | null> {
     // Si le capteur n'a pas de seuils définis, ne rien faire
     if (!sensor.seuilMin && !sensor.seuilMax) {
@@ -140,14 +141,15 @@ export class EventService {
     const value = reading.value;
     let eventType: EventType | null = null;
     let description = '';
+    const plantationText = plantationName ? ` du champ "${plantationName}"` : '';
 
     // Vérifier si la valeur dépasse les seuils
     if (sensor.seuilMin !== null && value < sensor.seuilMin) {
       eventType = EventType.SEUIL_DEPASSE;
-      description = `Le capteur ${sensor.type} a enregistré une valeur (${value}) inférieure au seuil minimum (${sensor.seuilMin})`;
+      description = `Le capteur ${sensor.type}${plantationText} a enregistré une valeur (${value}) inférieure au seuil minimum (${sensor.seuilMin})`;
     } else if (sensor.seuilMax !== null && value > sensor.seuilMax) {
       eventType = EventType.SEUIL_DEPASSE;
-      description = `Le capteur ${sensor.type} a enregistré une valeur (${value}) supérieure au seuil maximum (${sensor.seuilMax})`;
+      description = `Le capteur ${sensor.type}${plantationText} a enregistré une valeur (${value}) supérieure au seuil maximum (${sensor.seuilMax})`;
     }
 
     if (eventType) {
