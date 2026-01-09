@@ -385,7 +385,8 @@ GET /api/v1/technician/farmers?search[]=Jean&search[]=Dupont
 - Génération d'événements lors des changements de statut
 
 ### Événements
-- Types : seuil dépassé, actionneur activé/désactivé, changement de mode, capteur actif/inactif
+- Types : seuil dépassé, actionneur activé/désactivé (manuellement), changement de mode, capteur actif/inactif
+- Descriptions détaillées incluant le nom de la plantation
 - Association automatique aux notifications
 
 ### Notifications
@@ -393,6 +394,7 @@ GET /api/v1/technician/farmers?search[]=Jean&search[]=Dupont
 - Gestion de l'état de lecture (lu/non lu)
 - Statistiques complètes des notifications (total, envoyees, enAttente, erreurs, nonLues, lues, parCanal)
 - Envoi automatique lors d'événements
+- **Contenu enrichi** : Les messages de notification incluent désormais automatiquement le **nom de la plantation** concernée (ex: "Le capteur... du champ 'Ma Plantation'...") pour un meilleur contexte.
 - **Notifications Email** : Envoi automatique d'emails via SMTP (Gmail, etc.) avec templates HTML
 - **Notifications Web** : Affichage dans l'interface web avec endpoint dédié `/web`
 - Enrichissement automatique avec informations de plantation, capteurs et actionneurs
