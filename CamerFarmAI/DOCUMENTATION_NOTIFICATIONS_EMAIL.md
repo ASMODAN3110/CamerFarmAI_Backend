@@ -214,7 +214,7 @@ export const updateActuator = async (req: Request, res: Response) => {
     // Créer un événement
     const event = await EventService.createEvent(
       EventType.ACTIONNEUR_ACTIVE,
-      `L'actionneur "${actuator.name}" (${actuator.type}) a été activé`,
+      `L'actionneur "${actuator.name}" (${actuator.type}) du champ "${plantation.name}" a été activé manuellement`,
       undefined,
       actuator.id
     );
@@ -395,7 +395,7 @@ interface EmailTemplateVariables {
   <h2>🚨 Alerte : Seuil Dépassé</h2>
   <p>Bonjour Jean Dupont,</p>
   <div>
-    Le capteur de température a dépassé le seuil de 30°C
+    Le capteur de température du champ "Manioc Nord" a dépassé le seuil de 30°C
   </div>
   <p><strong>Plantation :</strong> Manioc Nord</p>
   <p><strong>Date :</strong> 15 janvier 2024 à 10:30</p>
@@ -428,6 +428,7 @@ export function generateEmailTemplate(variables: EmailTemplateVariables) {
 | Type | Libellé | Déclencheur | Données disponibles |
 |------|---------|-------------|-------------------|
 | `seuil_depasse` | 🚨 Alerte : Seuil Dépassé | Capteur dépasse seuil min/max | sensor, plantation |
+| `threshold_changed` | 📊 Modification des Seuils | Seuils d'un capteur modifiés | sensor, plantation |
 | `actionneur_active` | ✅ Actionneur Activé | Actionneur activé manuellement | actuator, plantation |
 | `actionneur_desactive` | ⏸️ Actionneur Désactivé | Actionneur désactivé manuellement | actuator, plantation |
 | `mode_changed` | 🔄 Changement de Mode | Mode de plantation changé | plantation |
@@ -538,7 +539,7 @@ Si l'envoi d'email échoue :
 // Dans plantation.controller.ts - addSensorReading()
 const event = await EventService.createEvent(
   EventType.SEUIL_DEPASSE,
-  `Le capteur de température a dépassé le seuil de ${sensor.seuilMax}°C`,
+  `Le capteur de température du champ "${plantation.name}" a dépassé le seuil de ${sensor.seuilMax}°C`,
   sensor.id,
   undefined
 );
@@ -558,7 +559,7 @@ await EventService.processEvent(event, [plantation.ownerId]);
 if (status === ActuatorStatus.ACTIVE && status !== oldStatus) {
   const event = await EventService.createEvent(
     EventType.ACTIONNEUR_ACTIVE,
-    `L'actionneur "${actuator.name}" (${actuator.type}) a été activé`,
+    `L'actionneur "${actuator.name}" (${actuator.type}) du champ "${plantation.name}" a été activé manuellement`,
     undefined,
     actuator.id
   );
