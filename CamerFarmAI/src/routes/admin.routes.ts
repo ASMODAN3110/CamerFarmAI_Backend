@@ -55,23 +55,79 @@ const validateCreateTechnician = [
 ];
 
 /**
- * @route   GET /api/v1/admin/users
- * @desc    Récupère tous les utilisateurs (agriculteurs et techniciens)
- * @access  Privé (ADMIN uniquement)
+ * @swagger
+ * tags:
+ *   name: Admin
+ *   description: Administrative operations
+ */
+
+/**
+ * @swagger
+ * /admin/users:
+ *   get:
+ *     summary: Get all users
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of all users
  */
 router.get('/users', adminController.getAllUsers);
 
 /**
- * @route   GET /api/v1/admin/users/:id
- * @desc    Récupère les détails d'un utilisateur spécifique avec ses plantations
- * @access  Privé (ADMIN uniquement)
+ * @swagger
+ * /admin/users/{id}:
+ *   get:
+ *     summary: Get user details
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: User details
+ *       404:
+ *         description: User not found
  */
 router.get('/users/:id', validateUUID('id'), adminController.getUserById);
 
 /**
- * @route   POST /api/v1/admin/users/technicians
- * @desc    Crée un compte technicien
- * @access  Privé (ADMIN uniquement)
+ * @swagger
+ * /admin/users/technicians:
+ *   post:
+ *     summary: Create technician
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - phone
+ *               - password
+ *             properties:
+ *               phone:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *               firstName:
+ *                 type: string
+ *               lastName:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Technician created successfully
  */
 router.post(
   '/users/technicians',
@@ -81,16 +137,53 @@ router.post(
 );
 
 /**
- * @route   DELETE /api/v1/admin/users/:id
- * @desc    Supprime un utilisateur (et ses plantations en cascade)
- * @access  Privé (ADMIN uniquement)
+ * @swagger
+ * /admin/users/{id}:
+ *   delete:
+ *     summary: Delete user
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: User deleted
  */
 router.delete('/users/:id', validateUUID('id'), adminController.deleteUser);
 
 /**
- * @route   PATCH /api/v1/admin/users/:id/status
- * @desc    Active ou désactive un compte utilisateur
- * @access  Privé (ADMIN uniquement)
+ * @swagger
+ * /admin/users/{id}/status:
+ *   patch:
+ *     summary: Update user status
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - isActive
+ *             properties:
+ *               isActive:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: User status updated
  */
 router.patch(
   '/users/:id/status',
