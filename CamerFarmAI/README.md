@@ -385,7 +385,7 @@ GET /api/v1/technician/farmers?search[]=Jean&search[]=Dupont
 - Génération d'événements lors des changements de statut
 
 ### Événements
-- Types : seuil dépassé, actionneur activé/désactivé (manuellement), changement de mode, capteur actif/inactif
+- Types : seuil dépassé, changement de seuils, actionneur activé/désactivé (manuellement), changement de mode, capteur actif/inactif
 - Descriptions détaillées incluant le nom de la plantation
 - Association automatique aux notifications
 
