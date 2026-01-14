@@ -143,6 +143,19 @@ authRouter.post('/refresh', authController.refresh);
  * @access  Privé (protégé par JWT)
  * @Jira    CA-42
  */
+/**
+ * @route   GET /api/v1/auth/health
+ * @desc    Health check endpoint for monitoring
+ * @access  Public
+ */
+authRouter.get('/health', authController.health);
+
+/**
+ * @route   GET /api/v1/auth/me
+ * @desc    Récupérer les informations de l'utilisateur connecté
+ * @access  Privé (protégé par JWT)
+ * @Jira    CA-42
+ */
 authRouter.get('/me', protectRoute, authController.getMe);
 
 /**

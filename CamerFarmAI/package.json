@@ -10,7 +10,8 @@
     "migration:run": "npm run typeorm -- migration:run -d src/config/database.ts",
     "migration:revert": "npm run typeorm -- migration:revert -d src/config/database.ts",
     "seed:mais": "ts-node src/scripts/seed-mais-sensor-data.ts",
-    "test:email": "ts-node src/scripts/test-email.ts"
+    "test:email": "ts-node src/scripts/test-email.ts",
+    "build": "tsc"
   },
   "keywords": [],
   "author": "",
@@ -39,14 +40,9 @@
     "qrcode": "^1.5.4",
     "reflect-metadata": "^0.2.2",
     "speakeasy": "^2.0.0",
-<<<<<<< HEAD
-    "twilio": "^5.0.0",
-    "typeorm": "^0.3.27",
-=======
     "ts-node": "^10.9.2",
     "typeorm": "^0.3.27",
     "typescript": "^5.9.3",
->>>>>>> aa0c21eaddd3005e3ea78b24df6016e08e22929b
     "validator": "^13.15.23"
   },
   "devDependencies": {
@@ -60,6 +56,7 @@
     "multer": "^2.0.2",
     "nodemon": "^3.1.11",
     "ts-node": "^10.9.2",
+    "typeorm": "^0.3.x",
     "typescript": "^5.9.3"
   }
 }

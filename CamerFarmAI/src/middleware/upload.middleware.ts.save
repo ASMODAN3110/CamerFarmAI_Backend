@@ -7,14 +7,7 @@ import type { Request } from 'express';
 const AVATARS_DIR = path.join(__dirname, '..', '..', 'uploads', 'avatars');
 
 // S'assurer que le dossier existe
-try {
-  if (!fs.existsSync(AVATARS_DIR)) {
-    fs.mkdirSync(AVATARS_DIR, { recursive: true });
-  }
-} catch (error) {
-  console.warn(`Warning: Could not create uploads directory: ${AVATARS_DIR}`, error);
-  // Continue anyway - multer will handle the error when trying to write
-}
+
 
 // Configuration du stockage sur disque
 const storage = multer.diskStorage({
