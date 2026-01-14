@@ -15,20 +15,20 @@ router.use(restrictTo(UserRole.TECHNICIAN, UserRole.ADMIN));
  * @swagger
  * tags:
  *   name: Technician
- *   description: Technician operations
+ *   description: Opérations technicien
  */
 
 /**
  * @swagger
  * /technician/stats:
  *   get:
- *     summary: Get technician stats
+ *     summary: Obtenir les statistiques technicien
  *     tags: [Technician]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Statistics
+ *         description: Statistiques
  */
 router.get('/stats', technicianController.getStats);
 
@@ -36,7 +36,7 @@ router.get('/stats', technicianController.getStats);
  * @swagger
  * /technician/farmers:
  *   get:
- *     summary: Get list of farmers
+ *     summary: Obtenir la liste des agriculteurs
  *     tags: [Technician]
  *     security:
  *       - bearerAuth: []
@@ -47,7 +47,7 @@ router.get('/stats', technicianController.getStats);
  *           type: string
  *     responses:
  *       200:
- *         description: List of farmers
+ *         description: Liste des agriculteurs
  */
 router.get('/farmers', technicianController.getFarmers);
 
@@ -55,7 +55,7 @@ router.get('/farmers', technicianController.getFarmers);
  * @swagger
  * /technician/farmers/{farmerId}/plantations:
  *   get:
- *     summary: Get farmer's plantations
+ *     summary: Obtenir les plantations de l'agriculteur
  *     tags: [Technician]
  *     security:
  *       - bearerAuth: []
@@ -67,7 +67,7 @@ router.get('/farmers', technicianController.getFarmers);
  *           type: string
  *     responses:
  *       200:
- *         description: List of plantations
+ *         description: Liste des plantations
  */
 router.get('/farmers/:farmerId/plantations', validateUUID('farmerId'), technicianController.getFarmerPlantations);
 

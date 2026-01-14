@@ -13,20 +13,20 @@ router.use(protectRoute);
  * @swagger
  * tags:
  *   name: Events
- *   description: Event management
+ *   description: Gestion des événements
  */
 
 /**
  * @swagger
  * /events/my:
  *   get:
- *     summary: Get my events
+ *     summary: Récupérer mes événements
  *     tags: [Events]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: List of user's events
+ *         description: Liste des événements de l'utilisateur
  */
 router.get('/my', eventController.getMyEvents);
 
@@ -34,7 +34,7 @@ router.get('/my', eventController.getMyEvents);
  * @swagger
  * /events/plantation/{id}:
  *   get:
- *     summary: Get events for a plantation
+ *     summary: Récupérer les événements d'une plantation
  *     tags: [Events]
  *     security:
  *       - bearerAuth: []
@@ -46,7 +46,7 @@ router.get('/my', eventController.getMyEvents);
  *           type: string
  *     responses:
  *       200:
- *         description: List of plantation events
+ *         description: Liste des événements de la plantation
  */
 router.get('/plantation/:id', validateUUID('id'), eventController.getPlantationEvents);
 
@@ -54,7 +54,7 @@ router.get('/plantation/:id', validateUUID('id'), eventController.getPlantationE
  * @swagger
  * /events/{eventId}:
  *   get:
- *     summary: Get event details
+ *     summary: Obtenir les détails de l'événement
  *     tags: [Events]
  *     security:
  *       - bearerAuth: []
@@ -66,9 +66,9 @@ router.get('/plantation/:id', validateUUID('id'), eventController.getPlantationE
  *           type: string
  *     responses:
  *       200:
- *         description: Event details
+ *         description: Détails de l'événement
  *       404:
- *         description: Event not found
+ *         description: Événement non trouvé
  */
 router.get('/:eventId', validateUUID('eventId'), eventController.getEvent);
 

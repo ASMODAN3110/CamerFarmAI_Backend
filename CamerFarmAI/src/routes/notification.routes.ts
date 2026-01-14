@@ -13,14 +13,14 @@ router.use(protectRoute);
  * @swagger
  * tags:
  *   name: Notifications
- *   description: Notification management
+ *   description: Gestion des notifications
  */
 
 /**
  * @swagger
  * /notifications/my:
  *   get:
- *     summary: Get my notifications
+ *     summary: Récupérer mes notifications
  *     tags: [Notifications]
  *     security:
  *       - bearerAuth: []
@@ -31,7 +31,7 @@ router.use(protectRoute);
  *           type: boolean
  *     responses:
  *       200:
- *         description: List of notifications
+ *         description: Liste des notifications
  */
 router.get('/my', notificationController.getMyNotifications);
 
@@ -39,7 +39,7 @@ router.get('/my', notificationController.getMyNotifications);
  * @swagger
  * /notifications/web:
  *   get:
- *     summary: Get web notifications
+ *     summary: Récupérer les notifications web
  *     tags: [Notifications]
  *     security:
  *       - bearerAuth: []
@@ -50,7 +50,7 @@ router.get('/my', notificationController.getMyNotifications);
  *           type: boolean
  *     responses:
  *       200:
- *         description: List of web notifications
+ *         description: Liste des notifications web
  */
 router.get('/web', notificationController.getWebNotifications);
 
@@ -58,13 +58,13 @@ router.get('/web', notificationController.getWebNotifications);
  * @swagger
  * /notifications/stats:
  *   get:
- *     summary: Get notification statistics
+ *     summary: Obtenir les statistiques des notifications
  *     tags: [Notifications]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Notification statistics
+ *         description: Statistiques des notifications
  */
 router.get('/stats', notificationController.getNotificationStats);
 
@@ -72,7 +72,7 @@ router.get('/stats', notificationController.getNotificationStats);
  * @swagger
  * /notifications/{notificationId}:
  *   get:
- *     summary: Get notification details
+ *     summary: Obtenir les détails de la notification
  *     tags: [Notifications]
  *     security:
  *       - bearerAuth: []
@@ -84,9 +84,9 @@ router.get('/stats', notificationController.getNotificationStats);
  *           type: string
  *     responses:
  *       200:
- *         description: Notification details
+ *         description: Détails de la notification
  *       404:
- *         description: Notification not found
+ *         description: Notification non trouvée
  */
 router.get('/:notificationId', validateUUID('notificationId'), notificationController.getNotification);
 
@@ -94,7 +94,7 @@ router.get('/:notificationId', validateUUID('notificationId'), notificationContr
  * @swagger
  * /notifications/{notificationId}/read:
  *   patch:
- *     summary: Mark notification as read
+ *     summary: Marquer la notification comme lue
  *     tags: [Notifications]
  *     security:
  *       - bearerAuth: []
@@ -106,7 +106,7 @@ router.get('/:notificationId', validateUUID('notificationId'), notificationContr
  *           type: string
  *     responses:
  *       200:
- *         description: Notification marked as read
+ *         description: Notification marquée comme lue
  */
 router.patch('/:notificationId/read', validateUUID('notificationId'), notificationController.markAsRead);
 
@@ -114,7 +114,7 @@ router.patch('/:notificationId/read', validateUUID('notificationId'), notificati
  * @swagger
  * /notifications/{id}:
  *   delete:
- *     summary: Delete notification
+ *     summary: Supprimer la notification
  *     tags: [Notifications]
  *     security:
  *       - bearerAuth: []
@@ -126,7 +126,7 @@ router.patch('/:notificationId/read', validateUUID('notificationId'), notificati
  *           type: string
  *     responses:
  *       200:
- *         description: Notification deleted
+ *         description: Notification supprimée
  */
 router.delete('/:id', validateUUID('id'), notificationController.deleteNotification);
 

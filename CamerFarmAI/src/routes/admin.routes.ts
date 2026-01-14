@@ -58,20 +58,20 @@ const validateCreateTechnician = [
  * @swagger
  * tags:
  *   name: Admin
- *   description: Administrative operations
+ *   description: Opérations administratives
  */
 
 /**
  * @swagger
  * /admin/users:
  *   get:
- *     summary: Get all users
+ *     summary: Récupérer tous les utilisateurs
  *     tags: [Admin]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: List of all users
+ *         description: Liste de tous les utilisateurs
  */
 router.get('/users', adminController.getAllUsers);
 
@@ -79,7 +79,7 @@ router.get('/users', adminController.getAllUsers);
  * @swagger
  * /admin/users/{id}:
  *   get:
- *     summary: Get user details
+ *     summary: Obtenir les détails de l'utilisateur
  *     tags: [Admin]
  *     security:
  *       - bearerAuth: []
@@ -91,9 +91,9 @@ router.get('/users', adminController.getAllUsers);
  *           type: string
  *     responses:
  *       200:
- *         description: User details
+ *         description: Détails de l'utilisateur
  *       404:
- *         description: User not found
+ *         description: Utilisateur non trouvé
  */
 router.get('/users/:id', validateUUID('id'), adminController.getUserById);
 
@@ -101,7 +101,7 @@ router.get('/users/:id', validateUUID('id'), adminController.getUserById);
  * @swagger
  * /admin/users/technicians:
  *   post:
- *     summary: Create technician
+ *     summary: Créer un technicien
  *     tags: [Admin]
  *     security:
  *       - bearerAuth: []
@@ -127,7 +127,7 @@ router.get('/users/:id', validateUUID('id'), adminController.getUserById);
  *                 type: string
  *     responses:
  *       201:
- *         description: Technician created successfully
+ *         description: Technicien créé avec succès
  */
 router.post(
   '/users/technicians',
@@ -140,7 +140,7 @@ router.post(
  * @swagger
  * /admin/users/{id}:
  *   delete:
- *     summary: Delete user
+ *     summary: Supprimer l'utilisateur
  *     tags: [Admin]
  *     security:
  *       - bearerAuth: []
@@ -152,7 +152,7 @@ router.post(
  *           type: string
  *     responses:
  *       200:
- *         description: User deleted
+ *         description: Utilisateur supprimé
  */
 router.delete('/users/:id', validateUUID('id'), adminController.deleteUser);
 
@@ -160,7 +160,7 @@ router.delete('/users/:id', validateUUID('id'), adminController.deleteUser);
  * @swagger
  * /admin/users/{id}/status:
  *   patch:
- *     summary: Update user status
+ *     summary: Mettre à jour le statut de l'utilisateur
  *     tags: [Admin]
  *     security:
  *       - bearerAuth: []
@@ -183,7 +183,7 @@ router.delete('/users/:id', validateUUID('id'), adminController.deleteUser);
  *                 type: boolean
  *     responses:
  *       200:
- *         description: User status updated
+ *         description: Statut de l'utilisateur mis à jour
  */
 router.patch(
   '/users/:id/status',

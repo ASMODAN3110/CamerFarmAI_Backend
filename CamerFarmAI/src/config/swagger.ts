@@ -4,11 +4,11 @@ const options: swaggerJsdoc.Options = {
     definition: {
         openapi: '3.0.0',
         info: {
-            title: 'CamerFarmAI API',
+            title: 'API CamerFarmAI',
             version: '1.0.0',
-            description: 'API documentation for the CamerFarmAI backend application',
+            description: 'Documentation de l\'API pour l\'application backend CamerFarmAI',
             contact: {
-                name: 'CamerFarmAI Support',
+                name: 'Support CamerFarmAI',
                 email: 'support@camerfarmai.com',
             },
         },

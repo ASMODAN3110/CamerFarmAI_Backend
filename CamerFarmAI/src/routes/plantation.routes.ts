@@ -15,14 +15,14 @@ router.use(protectRoute);
  * @swagger
  * tags:
  *   name: Plantations
- *   description: Plantation management
+ *   description: Gestion des plantations
  */
 
 /**
  * @swagger
  * /plantations:
  *   post:
- *     summary: Create a new plantation
+ *     summary: Créer une nouvelle plantation
  *     tags: [Plantations]
  *     security:
  *       - bearerAuth: []
@@ -45,9 +45,9 @@ router.use(protectRoute);
  *                 type: number
  *     responses:
  *       201:
- *         description: Plantation created successfully
+ *         description: Plantation créée avec succès
  *       400:
- *         description: Validation error
+ *         description: Erreur de validation
  */
 router.post('/', sanitizePlantationInput, plantationController.create);
 
@@ -55,13 +55,13 @@ router.post('/', sanitizePlantationInput, plantationController.create);
  * @swagger
  * /plantations/my:
  *   get:
- *     summary: Get my plantations
+ *     summary: Récupérer mes plantations
  *     tags: [Plantations]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: List of user's plantations
+ *         description: Liste des plantations de l'utilisateur
  */
 router.get('/my', plantationController.getMyPlantations);
 
@@ -69,7 +69,7 @@ router.get('/my', plantationController.getMyPlantations);
  * @swagger
  * /plantations/{id}:
  *   get:
- *     summary: Get plantation details
+ *     summary: Obtenir les détails de la plantation
  *     tags: [Plantations]
  *     security:
  *       - bearerAuth: []
@@ -81,9 +81,9 @@ router.get('/my', plantationController.getMyPlantations);
  *           type: string
  *     responses:
  *       200:
- *         description: Plantation details
+ *         description: Détails de la plantation
  *       404:
- *         description: Plantation not found
+ *         description: Plantation non trouvée
  */
 router.get('/:id', validateUUID('id'), plantationController.getOne);
 
@@ -91,7 +91,7 @@ router.get('/:id', validateUUID('id'), plantationController.getOne);
  * @swagger
  * /plantations/{id}:
  *   patch:
- *     summary: Update plantation
+ *     summary: Mettre à jour la plantation
  *     tags: [Plantations]
  *     security:
  *       - bearerAuth: []
@@ -113,7 +113,7 @@ router.get('/:id', validateUUID('id'), plantationController.getOne);
  *                 type: string
  *     responses:
  *       200:
- *         description: Plantation updated
+ *         description: Plantation mise à jour
  */
 router.patch('/:id', validateUUID('id'), sanitizePlantationInput, plantationController.update);
 
@@ -121,7 +121,7 @@ router.patch('/:id', validateUUID('id'), sanitizePlantationInput, plantationCont
  * @swagger
  * /plantations/{id}:
  *   delete:
- *     summary: Delete plantation
+ *     summary: Supprimer la plantation
  *     tags: [Plantations]
  *     security:
  *       - bearerAuth: []
@@ -133,7 +133,7 @@ router.patch('/:id', validateUUID('id'), sanitizePlantationInput, plantationCont
  *           type: string
  *     responses:
  *       200:
- *         description: Plantation deleted
+ *         description: Plantation supprimée
  */
 router.delete('/:id', validateUUID('id'), plantationController.remove);
 
@@ -141,7 +141,7 @@ router.delete('/:id', validateUUID('id'), plantationController.remove);
  * @swagger
  * /plantations/{id}/sensors:
  *   post:
- *     summary: Add sensor to plantation
+ *     summary: Ajouter un capteur à la plantation
  *     tags: [Plantations]
  *     security:
  *       - bearerAuth: []
@@ -165,7 +165,7 @@ router.delete('/:id', validateUUID('id'), plantationController.remove);
  *                 enum: [temperature, humidity, soil_moisture, light, co2]
  *     responses:
  *       201:
- *         description: Sensor created
+ *         description: Capteur créé
  */
 router.post('/:id/sensors', validateUUID('id'), sanitizeSensorInput, plantationController.createSensor);
 
@@ -173,7 +173,7 @@ router.post('/:id/sensors', validateUUID('id'), sanitizeSensorInput, plantationC
  * @swagger
  * /plantations/{id}/sensors:
  *   get:
- *     summary: Get plantation sensors
+ *     summary: Récupérer les capteurs de la plantation
  *     tags: [Plantations]
  *     security:
  *       - bearerAuth: []
@@ -185,7 +185,7 @@ router.post('/:id/sensors', validateUUID('id'), sanitizeSensorInput, plantationC
  *           type: string
  *     responses:
  *       200:
- *         description: List of sensors
+ *         description: Liste des capteurs
  */
 router.get('/:id/sensors', validateUUID('id'), plantationController.getSensors);
 
@@ -193,7 +193,7 @@ router.get('/:id/sensors', validateUUID('id'), plantationController.getSensors);
  * @swagger
  * /plantations/{id}/sensors/{sensorId}:
  *   patch:
- *     summary: Update sensor
+ *     summary: Mettre à jour le capteur
  *     tags: [Plantations]
  *     security:
  *       - bearerAuth: []
@@ -218,7 +218,7 @@ router.get('/:id/sensors', validateUUID('id'), plantationController.getSensors);
  *                 type: string
  *     responses:
  *       200:
- *         description: Sensor updated
+ *         description: Capteur mis à jour
  */
 router.patch('/:id/sensors/:sensorId', validateMultipleUUIDs(['id', 'sensorId']), sanitizeSensorInput, plantationController.updateSensor);
 
@@ -226,7 +226,7 @@ router.patch('/:id/sensors/:sensorId', validateMultipleUUIDs(['id', 'sensorId'])
  * @swagger
  * /plantations/{id}/sensors/{sensorId}/thresholds:
  *   patch:
- *     summary: Update sensor thresholds
+ *     summary: Mettre à jour les seuils du capteur
  *     tags: [Plantations]
  *     security:
  *       - bearerAuth: []
@@ -254,30 +254,171 @@ router.patch('/:id/sensors/:sensorId', validateMultipleUUIDs(['id', 'sensorId'])
  *                 type: number
  *     responses:
  *       200:
- *         description: Thresholds updated
+ *         description: Seuils mis à jour
  */
 router.patch('/:id/sensors/:sensorId/thresholds', validateMultipleUUIDs(['id', 'sensorId']), validateSensorThresholds, restrictTo(UserRole.FARMER), plantationController.updateSensorThresholds);
 
 // Gestion des lectures de capteurs
+/**
+ * @swagger
+ * /plantations/{id}/sensors/{sensorId}/readings:
+ *   post:
+ *     summary: Ajouter une lecture de capteur
+ *     tags: [Plantations]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: sensorId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - value
+ *             properties:
+ *               value:
+ *                 type: number
+ *     responses:
+ *       201:
+ *         description: Lecture ajoutée
+ */
 router.post('/:id/sensors/:sensorId/readings', validateMultipleUUIDs(['id', 'sensorId']), plantationController.addSensorReading);
+/**
+ * @swagger
+ * /plantations/{id}/sensors/{sensorId}/readings:
+ *   get:
+ *     summary: Récupérer les lectures du capteur
+ *     tags: [Plantations]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: sensorId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Liste des lectures
+ */
 router.get('/:id/sensors/:sensorId/readings', validateMultipleUUIDs(['id', 'sensorId']), plantationController.getSensorReadings);
 
 // Gestion des actionneurs
+/**
+ * @swagger
+ * /plantations/{id}/actuators:
+ *   post:
+ *     summary: Ajouter un actionneur à la plantation
+ *     tags: [Plantations]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - type
+ *             properties:
+ *               name:
+ *                 type: string
+ *               type:
+ *                 type: string
+ *                 enum: [pompe, ventilateur, eclairage]
+ *     responses:
+ *       201:
+ *         description: Actionneur créé
+ */
 router.post('/:id/actuators', validateUUID('id'), sanitizeActuatorInput, plantationController.addActuator);
+/**
+ * @swagger
+ * /plantations/{id}/actuators:
+ *   get:
+ *     summary: Récupérer les actionneurs de la plantation
+ *     tags: [Plantations]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Liste des actionneurs
+ */
 router.get('/:id/actuators', validateUUID('id'), plantationController.getActuators);
+/**
+ * @swagger
+ * /plantations/{id}/actuators/{actuatorId}:
+ *   patch:
+ *     summary: Mettre à jour l'actionneur
+ *     tags: [Plantations]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: actuatorId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               status:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Actionneur mis à jour
+ */
 router.patch('/:id/actuators/:actuatorId', validateMultipleUUIDs(['id', 'actuatorId']), sanitizeActuatorInput, plantationController.updateActuator);
 
 /**
  * @swagger
  * /plantations:
  *   get:
- *     summary: Get all plantations (Admin/Technician)
+ *     summary: Récupérer toutes les plantations (Admin/Technicien)
  *     tags: [Plantations]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: List of all plantations
+ *         description: Liste de toutes les plantations
  */
 router.get('/', restrictTo(UserRole.TECHNICIAN, UserRole.ADMIN), plantationController.getAll);
 

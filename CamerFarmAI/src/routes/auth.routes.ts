@@ -88,14 +88,14 @@ const validateUpdateProfile = [
  * @swagger
  * tags:
  *   name: Auth
- *   description: Authentication and user management
+ *   description: Authentification et gestion des utilisateurs
  */
 
 /**
  * @swagger
  * /auth/register:
  *   post:
- *     summary: Register a new user
+ *     summary: Inscrire un nouvel utilisateur
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -119,9 +119,9 @@ const validateUpdateProfile = [
  *                 type: string
  *     responses:
  *       201:
- *         description: User registered successfully
+ *         description: Utilisateur inscrit avec succès
  *       400:
- *         description: Validation error
+ *         description: Erreur de validation
  */
 authRouter.post('/register', validateRegister, sanitizeInput, authController.register);
 
@@ -129,7 +129,7 @@ authRouter.post('/register', validateRegister, sanitizeInput, authController.reg
  * @swagger
  * /auth/login:
  *   post:
- *     summary: Login user
+ *     summary: Connecter un utilisateur
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -149,9 +149,9 @@ authRouter.post('/register', validateRegister, sanitizeInput, authController.reg
  *                 type: string
  *     responses:
  *       200:
- *         description: Login successful
+ *         description: Connexion réussie
  *       401:
- *         description: Invalid credentials
+ *         description: Identifiants invalides
  */
 authRouter.post('/login', validateLogin, sanitizeInput, authController.login);
 
@@ -177,7 +177,7 @@ const validateVerify2FA = [
  * @swagger
  * /auth/login/verify-2fa:
  *   post:
- *     summary: Verify 2FA code during login
+ *     summary: Vérifier le code 2FA lors de la connexion
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -195,9 +195,9 @@ const validateVerify2FA = [
  *                 type: string
  *     responses:
  *       200:
- *         description: 2FA verified successfully
+ *         description: 2FA vérifié avec succès
  *       401:
- *         description: Invalid 2FA code
+ *         description: Code 2FA invalide
  */
 authRouter.post('/login/verify-2fa', validateVerify2FA, authController.verifyTwoFactorLogin);
 
@@ -205,42 +205,42 @@ authRouter.post('/login/verify-2fa', validateVerify2FA, authController.verifyTwo
  * @swagger
  * /auth/refresh:
  *   post:
- *     summary: Refresh access token
+ *     summary: Rafraîchir le token d'accès
  *     tags: [Auth]
  *     responses:
  *       200:
- *         description: Token refreshed successfully
+ *         description: Token rafraîchi avec succès
  *       401:
- *         description: Invalid or missing refresh token
+ *         description: Token de rafraîchissement invalide ou manquant
  */
 authRouter.post('/refresh', authController.refresh);
+
+
+/**
+ * @swagger
+ * /auth/health:
+ *   get:
+ *     summary: Vérification de l'état du serveur
+ *     tags: [Auth]
+ *     responses:
+ *       200:
+ *         description: Le serveur est en bonne santé
+ */
+authRouter.get('/health', authController.health);
 
 /**
  * @swagger
  * /auth/me:
  *   get:
- *     summary: Get current user profile
+ *     summary: Récupérer le profil de l'utilisateur actuel
  *     tags: [Auth]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: User profile retrieved successfully
+ *         description: Profil utilisateur récupéré avec succès
  *       401:
- *         description: Unauthorized
- */
-/**
- * @route   GET /api/v1/auth/health
- * @desc    Health check endpoint for monitoring
- * @access  Public
- */
-authRouter.get('/health', authController.health);
-
-/**
- * @route   GET /api/v1/auth/me
- * @desc    Récupérer les informations de l'utilisateur connecté
- * @access  Privé (protégé par JWT)
- * @Jira    CA-42
+ *         description: Non autorisé
  */
 authRouter.get('/me', protectRoute, authController.getMe);
 
@@ -248,13 +248,13 @@ authRouter.get('/me', protectRoute, authController.getMe);
  * @swagger
  * /auth/logout:
  *   post:
- *     summary: Logout user
+ *     summary: Déconnecter l'utilisateur
  *     tags: [Auth]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Logout successful
+ *         description: Déconnexion réussie
  */
 authRouter.post('/logout', protectRoute, authController.logout);
 
@@ -262,7 +262,7 @@ authRouter.post('/logout', protectRoute, authController.logout);
  * @swagger
  * /auth/profile:
  *   put:
- *     summary: Update user profile
+ *     summary: Mettre à jour le profil utilisateur
  *     tags: [Auth]
  *     security:
  *       - bearerAuth: []
@@ -282,7 +282,7 @@ authRouter.post('/logout', protectRoute, authController.logout);
  *                 type: string
  *     responses:
  *       200:
- *         description: Profile updated successfully
+ *         description: Profil mis à jour avec succès
  */
 authRouter.put('/profile', protectRoute, validateUpdateProfile, sanitizeInput, authController.updateProfile);
 
@@ -290,7 +290,7 @@ authRouter.put('/profile', protectRoute, validateUpdateProfile, sanitizeInput, a
  * @swagger
  * /auth/profile/avatar:
  *   post:
- *     summary: Upload user avatar
+ *     summary: Télécharger l'avatar de l'utilisateur
  *     tags: [Auth]
  *     security:
  *       - bearerAuth: []
@@ -305,7 +305,7 @@ authRouter.put('/profile', protectRoute, validateUpdateProfile, sanitizeInput, a
  *                 format: binary
  *     responses:
  *       200:
- *         description: Avatar uploaded successfully
+ *         description: Avatar téléchargé avec succès
  */
 authRouter.post(
   '/profile/avatar',
@@ -318,13 +318,13 @@ authRouter.post(
  * @swagger
  * /auth/2fa/generate:
  *   get:
- *     summary: Generate 2FA secret and QR code
+ *     summary: Générer le secret 2FA et le QR code
  *     tags: [Auth]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: 2FA secret generated successfully
+ *         description: Secret 2FA généré avec succès
  */
 authRouter.get('/2fa/generate', protectRoute, authController.generateTwoFactorSecret);
 
@@ -345,7 +345,7 @@ const validateTwoFactorToken = [
  * @swagger
  * /auth/2fa/enable:
  *   post:
- *     summary: Enable 2FA
+ *     summary: Activer la 2FA
  *     tags: [Auth]
  *     security:
  *       - bearerAuth: []
@@ -362,7 +362,7 @@ const validateTwoFactorToken = [
  *                 type: string
  *     responses:
  *       200:
- *         description: 2FA enabled successfully
+ *         description: 2FA activée avec succès
  */
 authRouter.post('/2fa/enable', protectRoute, validateTwoFactorToken, authController.enableTwoFactor);
 
@@ -370,7 +370,7 @@ authRouter.post('/2fa/enable', protectRoute, validateTwoFactorToken, authControl
  * @swagger
  * /auth/2fa/disable:
  *   post:
- *     summary: Disable 2FA
+ *     summary: Désactiver la 2FA
  *     tags: [Auth]
  *     security:
  *       - bearerAuth: []
@@ -387,7 +387,7 @@ authRouter.post('/2fa/enable', protectRoute, validateTwoFactorToken, authControl
  *                 type: string
  *     responses:
  *       200:
- *         description: 2FA disabled successfully
+ *         description: 2FA désactivée avec succès
  */
 authRouter.post('/2fa/disable', protectRoute, validateTwoFactorToken, authController.disableTwoFactor);
 
@@ -425,7 +425,7 @@ const validateResetPassword = [
  * @swagger
  * /auth/forgot-password:
  *   post:
- *     summary: Request password reset email
+ *     summary: Demander un email de réinitialisation de mot de passe
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -440,7 +440,7 @@ const validateResetPassword = [
  *                 type: string
  *     responses:
  *       200:
- *         description: Reset email sent
+ *         description: Email de réinitialisation envoyé
  */
 authRouter.post('/forgot-password', validateForgotPassword, sanitizeInput, authController.forgotPassword);
 
@@ -448,7 +448,7 @@ authRouter.post('/forgot-password', validateForgotPassword, sanitizeInput, authC
  * @swagger
  * /auth/reset-password:
  *   post:
- *     summary: Reset password with token
+ *     summary: Réinitialiser le mot de passe avec le token
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -466,7 +466,7 @@ authRouter.post('/forgot-password', validateForgotPassword, sanitizeInput, authC
  *                 type: string
  *     responses:
  *       200:
- *         description: Password reset successfully
+ *         description: Mot de passe réinitialisé avec succès
  */
 authRouter.post('/reset-password', validateResetPassword, sanitizeInput, authController.resetPassword);
 
