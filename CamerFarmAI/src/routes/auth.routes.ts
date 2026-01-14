@@ -85,20 +85,73 @@ const validateUpdateProfile = [
 ];
 
 /**
- * @route   POST /api/v1/auth/register
- * @desc    Inscription d'un nouvel utilisateur (agriculteur, technicien, admin)
- * @access  Public
- * @SRS     EF-07 - Sécurité et Gestion des Utilisateurs
- * @Jira    CA-40, CA-41
+ * @swagger
+ * tags:
+ *   name: Auth
+ *   description: Authentication and user management
+ */
+
+/**
+ * @swagger
+ * /auth/register:
+ *   post:
+ *     summary: Register a new user
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - phone
+ *               - password
+ *             properties:
+ *               phone:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *               firstName:
+ *                 type: string
+ *               lastName:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: User registered successfully
+ *       400:
+ *         description: Validation error
  */
 authRouter.post('/register', validateRegister, sanitizeInput, authController.register);
 
 /**
- * @route   POST /api/v1/auth/login
- * @desc    Connexion utilisateur → retourne accessToken + refreshToken (HttpOnly cookie) ou temporaryToken si 2FA activé
- * @access  Public
- * @SRS     EF-07
- * @Jira    CA-40
+ * @swagger
+ * /auth/login:
+ *   post:
+ *     summary: Login user
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - password
+ *             properties:
+ *               email:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *               twoFactorCode:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Login successful
+ *       401:
+ *         description: Invalid credentials
  */
 authRouter.post('/login', validateLogin, sanitizeInput, authController.login);
 
@@ -121,27 +174,60 @@ const validateVerify2FA = [
 ];
 
 /**
- * @route   POST /api/v1/auth/login/verify-2fa
- * @desc    Vérifier le code 2FA et compléter la connexion
- * @access  Public
- * @SRS     EF-07
- * @Jira    CA-40
+ * @swagger
+ * /auth/login/verify-2fa:
+ *   post:
+ *     summary: Verify 2FA code during login
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - temporaryToken
+ *               - twoFactorCode
+ *             properties:
+ *               temporaryToken:
+ *                 type: string
+ *               twoFactorCode:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: 2FA verified successfully
+ *       401:
+ *         description: Invalid 2FA code
  */
 authRouter.post('/login/verify-2fa', validateVerify2FA, authController.verifyTwoFactorLogin);
 
 /**
- * @route   POST /api/v1/auth/refresh
- * @desc    Rafraîchir le token d'accès avec le refresh token
- * @access  Public (mais vérifie le cookie refreshToken)
- * @Jira    CA-40
+ * @swagger
+ * /auth/refresh:
+ *   post:
+ *     summary: Refresh access token
+ *     tags: [Auth]
+ *     responses:
+ *       200:
+ *         description: Token refreshed successfully
+ *       401:
+ *         description: Invalid or missing refresh token
  */
 authRouter.post('/refresh', authController.refresh);
 
 /**
- * @route   GET /api/v1/auth/me
- * @desc    Récupérer les informations de l'utilisateur connecté
- * @access  Privé (protégé par JWT)
- * @Jira    CA-42
+ * @swagger
+ * /auth/me:
+ *   get:
+ *     summary: Get current user profile
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: User profile retrieved successfully
+ *       401:
+ *         description: Unauthorized
  */
 /**
  * @route   GET /api/v1/auth/health
@@ -159,26 +245,67 @@ authRouter.get('/health', authController.health);
 authRouter.get('/me', protectRoute, authController.getMe);
 
 /**
- * @route   POST /api/v1/auth/logout
- * @desc    Déconnexion → efface le cookie refreshToken
- * @access  Privé
- * @Jira    CA-40
+ * @swagger
+ * /auth/logout:
+ *   post:
+ *     summary: Logout user
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Logout successful
  */
 authRouter.post('/logout', protectRoute, authController.logout);
 
 /**
- * @route   PUT /api/v1/auth/profile
- * @desc    Mettre à jour le profil de l'utilisateur connecté
- * @access  Privé (protégé par JWT)
- * @Jira    CA-42
+ * @swagger
+ * /auth/profile:
+ *   put:
+ *     summary: Update user profile
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               firstName:
+ *                 type: string
+ *               lastName:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               phone:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Profile updated successfully
  */
 authRouter.put('/profile', protectRoute, validateUpdateProfile, sanitizeInput, authController.updateProfile);
 
 /**
- * @route   POST /api/v1/auth/profile/avatar
- * @desc    Upload de l'avatar de l'utilisateur connecté
- * @access  Privé (protégé par JWT)
- * @Body    multipart/form-data (champ \"avatar\" : fichier image)
+ * @swagger
+ * /auth/profile/avatar:
+ *   post:
+ *     summary: Upload user avatar
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               avatar:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: Avatar uploaded successfully
  */
 authRouter.post(
   '/profile/avatar',
@@ -188,9 +315,16 @@ authRouter.post(
 );
 
 /**
- * @route   GET /api/v1/auth/2fa/generate
- * @desc    Générer un secret 2FA et un QR code pour l'utilisateur connecté
- * @access  Privé (protégé par JWT)
+ * @swagger
+ * /auth/2fa/generate:
+ *   get:
+ *     summary: Generate 2FA secret and QR code
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: 2FA secret generated successfully
  */
 authRouter.get('/2fa/generate', protectRoute, authController.generateTwoFactorSecret);
 
@@ -208,16 +342,52 @@ const validateTwoFactorToken = [
 ];
 
 /**
- * @route   POST /api/v1/auth/2fa/enable
- * @desc    Activer le 2FA pour l'utilisateur connecté
- * @access  Privé (protégé par JWT)
+ * @swagger
+ * /auth/2fa/enable:
+ *   post:
+ *     summary: Enable 2FA
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - token
+ *             properties:
+ *               token:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: 2FA enabled successfully
  */
 authRouter.post('/2fa/enable', protectRoute, validateTwoFactorToken, authController.enableTwoFactor);
 
 /**
- * @route   POST /api/v1/auth/2fa/disable
- * @desc    Désactiver le 2FA pour l'utilisateur connecté
- * @access  Privé (protégé par JWT)
+ * @swagger
+ * /auth/2fa/disable:
+ *   post:
+ *     summary: Disable 2FA
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - token
+ *             properties:
+ *               token:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: 2FA disabled successfully
  */
 authRouter.post('/2fa/disable', protectRoute, validateTwoFactorToken, authController.disableTwoFactor);
 
@@ -252,16 +422,51 @@ const validateResetPassword = [
 ];
 
 /**
- * @route   POST /api/v1/auth/forgot-password
- * @desc    Demande de réinitialisation de mot de passe par email
- * @access  Public
+ * @swagger
+ * /auth/forgot-password:
+ *   post:
+ *     summary: Request password reset email
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *             properties:
+ *               email:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Reset email sent
  */
 authRouter.post('/forgot-password', validateForgotPassword, sanitizeInput, authController.forgotPassword);
 
 /**
- * @route   POST /api/v1/auth/reset-password
- * @desc    Réinitialisation du mot de passe avec token
- * @access  Public
+ * @swagger
+ * /auth/reset-password:
+ *   post:
+ *     summary: Reset password with token
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - token
+ *               - newPassword
+ *             properties:
+ *               token:
+ *                 type: string
+ *               newPassword:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Password reset successfully
  */
 authRouter.post('/reset-password', validateResetPassword, sanitizeInput, authController.resetPassword);
 

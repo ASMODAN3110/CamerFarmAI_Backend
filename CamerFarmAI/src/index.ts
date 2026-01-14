@@ -152,6 +152,11 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
+import swaggerUi from 'swagger-ui-express';
+import { specs } from './config/swagger';
+
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
+
 app.use(bodyParser.json({ limit: '10mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());  // Pour lire les cookies
@@ -174,7 +179,7 @@ app.use('/api/v1/admin', adminRouter);
 AppDataSource.initialize()
   .then(() => {
     console.log('DB connected');
-    
+
     // Démarrer le serveur seulement après la connexion à la DB
     app.listen(PORT, () => {
       console.log(`Serveur démarré sur http://localhost:${PORT}`);

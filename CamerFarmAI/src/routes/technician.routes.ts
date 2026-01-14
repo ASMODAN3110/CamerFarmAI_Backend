@@ -11,13 +11,64 @@ const router = Router();
 router.use(protectRoute);
 router.use(restrictTo(UserRole.TECHNICIAN, UserRole.ADMIN));
 
-// Statistiques globales
+/**
+ * @swagger
+ * tags:
+ *   name: Technician
+ *   description: Technician operations
+ */
+
+/**
+ * @swagger
+ * /technician/stats:
+ *   get:
+ *     summary: Get technician stats
+ *     tags: [Technician]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Statistics
+ */
 router.get('/stats', technicianController.getStats);
 
-// Liste des agriculteurs avec recherche optionnelle
+/**
+ * @swagger
+ * /technician/farmers:
+ *   get:
+ *     summary: Get list of farmers
+ *     tags: [Technician]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: List of farmers
+ */
 router.get('/farmers', technicianController.getFarmers);
 
-// Plantations d'un agriculteur spécifique
+/**
+ * @swagger
+ * /technician/farmers/{farmerId}/plantations:
+ *   get:
+ *     summary: Get farmer's plantations
+ *     tags: [Technician]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: farmerId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: List of plantations
+ */
 router.get('/farmers/:farmerId/plantations', validateUUID('farmerId'), technicianController.getFarmerPlantations);
 
 export default router;
