@@ -558,6 +558,46 @@ Consultez [SECURITE.md](./SECURITE.md) pour plus de détails.
 - [ ] Rate limiting avancé
 - [ ] Logging structuré
 
+## Installation et Exécution avec Docker
+
+Le projet inclut une configuration Docker complète pour faciliter le déploiement et garantir un environnement d'exécution cohérent.
+
+### Prérequis
+- Docker Desktop (Windows/Mac) ou Docker Engine (Linux)
+
+### 1. Construire l'image Docker
+
+Exécutez cette commande à la racine du projet pour créer l'image :
+
+```bash
+docker build -t camerfarmai-backend .
+```
+
+### 2. Démarrer le conteneur
+
+Une fois l'image construite, lancez le conteneur en utilisant votre fichier `.env` pour la configuration :
+
+```bash
+docker run -p 3000:3000 --env-file .env --name backend camerfarmai-backend
+```
+
+### ⚠️ Connexion à la Base de Données depuis Docker
+
+Si votre base de données PostgreSQL tourne sur votre machine hôte (en dehors de Docker), le conteneur ne peut pas y accéder via `localhost` (qui réfère au conteneur lui-même).
+
+*   **Windows / Mac** : Remplacez `localhost` par `host.docker.internal` dans votre variable `DATABASE_URL`.
+    *   Exemple : `DATABASE_URL=postgresql://user:pass@host.docker.internal:5432/camerfarm`
+*   **Linux** : Utilisez l'adresse IP de l'interface Docker (souvent `172.17.0.1`) ou ajoutez l'argument `--network="host"` à la commande `docker run`.
+
+### Architecture du Dockerfile
+
+Le `Dockerfile` utilise une approche **multi-stage** pour optimiser la sécurité et la taille de l'image :
+1.  **Builder Stage** : Image complète node pour installer les dépendances et compiler le TypeScript.
+2.  **Production Stage** : Image `alpine` légère contenant uniquement le code compilé (`dist/`) et les dépendances de production.
+    *   Exécution en tant qu'utilisateur non-root (`nodejs`)
+    *   Gestion correcte des signaux système via `dumb-init`
+    *   Healthcheck intégré pour vérifier l'état de l'API
+
 ## Documentation complémentaire
 
 - [CONFIGURATION_EMAIL.md](./CONFIGURATION_EMAIL.md) - Guide de configuration SMTP Gmail
