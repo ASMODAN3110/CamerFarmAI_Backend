@@ -266,6 +266,31 @@ export const getMe = async (req: Request, res: Response) => {
  * POST /api/v1/auth/logout
  * Déconnexion : on efface simplement le cookie
  */
+/**
+ * GET /api/v1/auth/health
+ * Health check endpoint for monitoring and load balancers
+ */
+export const health = async (_req: Request, res: Response) => {
+  try {
+    // Check database connection
+    const isConnected = AppDataSource.isInitialized;
+    
+    res.status(200).json({
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      database: isConnected ? 'connected' : 'disconnected',
+      service: 'camerfarmai-backend',
+    });
+  } catch (error) {
+    res.status(503).json({
+      status: 'error',
+      timestamp: new Date().toISOString(),
+      database: 'error',
+      service: 'camerfarmai-backend',
+    });
+  }
+};
+
 export const logout = async (_req: Request, res: Response) => {
   res.clearCookie('refreshToken', {
     httpOnly: true,
