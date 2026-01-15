@@ -52,7 +52,11 @@ app.use(logSecurityEvents);
 
 // Configuration CORS pour permettre les cookies depuis le frontend
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173' || 'https://camerfarmaif.vercel.app',
+  origin: [
+    'http://localhost:5173',
+    'https://camerfarmaif.vercel.app',
+    process.env.FRONTEND_URL || ''
+  ].filter(url => url !== ''),
   credentials: true,  // Nécessaire pour envoyer/recevoir les cookies HttpOnly
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
