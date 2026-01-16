@@ -20,7 +20,7 @@ import adminRouter from './routes/admin.routes';
 import { AppDataSource } from './config/database';
 
 // Middlewares de sécurité
-import { securityHeaders, logSecurityEvents, validateOrigin, requestSizeLimiter } from './middleware/security.middleware';
+import { securityHeaders, logSecurityEvents, requestSizeLimiter } from './middleware/security.middleware';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
