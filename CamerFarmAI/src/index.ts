@@ -52,12 +52,24 @@ app.use(logSecurityEvents);
 
 // Configuration CORS pour permettre les cookies depuis le frontend
 app.use(cors({
-  origin: [
-    'http://localhost:5173',
-    'https://camerfarmaif.vercel.app',
-    process.env.FRONTEND_URL || ''
-  ].filter(url => url !== ''),
-  credentials: true,  // Nécessaire pour envoyer/recevoir les cookies HttpOnly
+  origin: (origin, callback) => {
+    const allowedOrigins = [
+      'http://localhost:5173',
+      'https://camerfarmaif.vercel.app',
+      process.env.FRONTEND_URL
+    ];
+
+    // Autoriser les requêtes sans origine (comme Postman ou curl)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
+      callback(null, true);
+    } else {
+      console.log('Bloqué par CORS:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
@@ -76,11 +88,22 @@ app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
 // Importer et monter les routes 
 app.use('/api/v1/auth', authRouter);
+app.use('/auth', authRouter); // Fallback pour le frontend qui oublie /api/v1
+
 app.use('/api/v1/plantations', plantationRouter);
+app.use('/plantations', plantationRouter);
+
 app.use('/api/v1/events', eventRouter);
+app.use('/events', eventRouter);
+
 app.use('/api/v1/notifications', notificationRouter);
+app.use('/notifications', notificationRouter);
+
 app.use('/api/v1/technician', technicianRouter);
+app.use('/technician', technicianRouter);
+
 app.use('/api/v1/admin', adminRouter);
+app.use('/admin', adminRouter);
 
 
 

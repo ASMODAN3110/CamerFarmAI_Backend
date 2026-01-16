@@ -598,6 +598,57 @@ Le `Dockerfile` utilise une approche **multi-stage** pour optimiser la sécurit�
     *   Gestion correcte des signaux système via `dumb-init`
     *   Healthcheck intégré pour vérifier l'état de l'API
 
+## Déploiement Hybride (Dev Local + Frontend Vercel)
+
+Cette configuration permet de faire communiquer le **Frontend hébergé sur Vercel** (Production/Preview) avec votre **Backend local** et votre **Base de données locale**.
+
+C'est idéal pour débugger le frontend en conditions réelles sans déployer le backend.
+
+### 1. Architecture
+
+*   **Frontend (Vercel)** : `https://camerfarmaif.vercel.app` (HTTPS)
+*   **Tunnel (Ngrok)** : `https://xxxx.ngrok-free.app` (HTTPS) -> `http://localhost:3000`
+*   **Backend (Local)** : `http://localhost:3000`
+*   **DB (Local)** : `localhost:5432`
+
+### 2. Prérequis : Ngrok
+
+L'outil **ngrok** est nécessaire pour exposer votre port local 3000 sur internet en HTTPS (requis car Vercel est en HTTPS).
+
+1.  **Installation** : Téléchargez sur [ngrok.com](https://ngrok.com) ou via `choco install ngrok`.
+2.  **Compte** : Créez un compte gratuit sur ngrok.com pour obtenir votre `authtoken`.
+3.  **Configuration** :
+    ```bash
+    ngrok config add-authtoken VOTRE_TOKEN
+    ```
+
+### 3. Lancer le tunnel
+
+Chaque fois que vous voulez travailler dans ce mode :
+
+1.  Lancez votre backend local : `npm run dev`
+2.  Dans un autre terminal, lancez le tunnel :
+    ```bash
+    ngrok http 3000
+    ```
+3.  Copiez l'URL HTTPS fournie (ex: `https://umbral-cecila-materially.ngrok-free.dev`).
+
+### 4. Configuration Frontend Vercel
+
+Sur votre dashboard Vercel (Settings > Environment Variables) :
+
+1.  Modifiez la variable `VITE_API_URL` (ou `NEXT_PUBLIC_API_URL`).
+2.  Valeur : Votre URL Ngrok **sans slash final** (ex: `https://umbral-cecila-materially.ngrok-free.dev`).
+3.  **Redéployez** l'application (Deployments > Redeploy) pour appliquer le changement.
+
+### 5. Fallback Routes (Robustesse)
+
+Pour simplifier la configuration, le backend a été configuré pour être flexible sur les URLs. Il accepte les requêtes sur :
+*   `/api/v1/...` (Standard)
+*   `/` (Racine, ex: `/auth/register` au lieu de `/api/v1/auth/register`)
+
+Cela permet au frontend de fonctionner même si la variable d'environnement oublie le suffixe `/api/v1`.
+
 ## Documentation complémentaire
 
 - [CONFIGURATION_EMAIL.md](./CONFIGURATION_EMAIL.md) - Guide de configuration SMTP Gmail
