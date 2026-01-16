@@ -51,28 +51,14 @@ app.use(requestSizeLimiter('10mb'));
 app.use(logSecurityEvents);
 
 // Configuration CORS pour permettre les cookies depuis le frontend
+// Configuration CORS temporaire pour debug
 app.use(cors({
-  origin: (origin, callback) => {
-    const allowedOrigins = [
-      'http://localhost:5173',
-      'https://camerfarmaif.vercel.app',
-      process.env.FRONTEND_URL
-    ];
-
-    // Autoriser les requêtes sans origine (comme Postman ou curl)
-    if (!origin) return callback(null, true);
-
-    if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
-      callback(null, true);
-    } else {
-      console.log('Bloqué par CORS:', origin);
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
+  origin: true, // Autorise tout le monde pour tester
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
 }));
+
 
 import swaggerUi from 'swagger-ui-express';
 import { specs } from './config/swagger';
