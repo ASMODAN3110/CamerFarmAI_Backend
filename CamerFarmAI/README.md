@@ -598,6 +598,55 @@ Le `Dockerfile` utilise une approche **multi-stage** pour optimiser la sécurit�
     *   Gestion correcte des signaux système via `dumb-init`
     *   Healthcheck intégré pour vérifier l'état de l'API
 
+## Déploiement Production (Frontend Vercel + Backend VPS)
+
+Configuration finale pour la production, connectant le Frontend Vercel au Backend hébergé sur le VPS.
+
+### 1. Architecture
+
+*   **Frontend (Vercel)** : `https://camerfarmaif.vercel.app`
+*   **Backend (VPS - Docker)** : `https://backend.camerfarm.strife-cyber.org`
+*   **DB (VPS - Docker)** : PostgreSQL interne au réseau Docker du VPS
+
+### 2. Procédure de mise à jour
+
+#### Étape 1 : Mettre à jour le Frontend (Vercel)
+
+Dans Vercel > Settings > Environment Variables :
+1.  **VITE_API_URL** : `https://backend.camerfarm.strife-cyber.org/api/v1`
+    *(Note : Le suffixe `/api/v1` est recommandé)*
+2.  Sauvegarder et **Redéployer** (Deployments > Redeploy).
+
+#### Étape 2 : Mettre à jour le Backend (VPS)
+
+Pour appliquer les dernières modifications (comme les correctifs CORS) sur le VPS :
+
+1.  Se connecter en SSH :
+    ```bash
+    ssh user@ip_vps
+    ```
+2.  Aller dans le dossier du projet :
+    ```bash
+    cd /opt/apps/CamerFarmAI_Backend/CamerFarmAI
+    ```
+3.  Récupérer le code :
+    ```bash
+    git pull origin main
+    ```
+4.  Reconstruire et relancer les conteneurs :
+    ```bash
+    docker compose up -d --build
+    ```
+    *(Le flag `--build` est crucial pour recompiler le code TypeScript)*
+
+### 3. Résolution des problèmes courants
+
+*   **Erreur CORS** : Si vous voyez `No 'Access-Control-Allow-Origin'`, c'est que le VPS utilise une ancienne version du code. Faites `git pull` et `docker compose up -d --build`.
+*   **Erreur GitHub (Dubious Ownership)** : Si `git pull` échoue avec cette erreur, lancez :
+    ```bash
+    git config --global --add safe.directory /opt/apps/CamerFarmAI_Backend/CamerFarmAI
+    ```
+
 ## Déploiement Hybride (Dev Local + Frontend Vercel)
 
 Cette configuration permet de faire communiquer le **Frontend hébergé sur Vercel** (Production/Preview) avec votre **Backend local** et votre **Base de données locale**.
