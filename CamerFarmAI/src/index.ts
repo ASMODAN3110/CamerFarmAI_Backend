@@ -42,7 +42,8 @@ app.use(helmet({
 app.use(securityHeaders);
 
 // Validation de l'origine
-app.use(validateOrigin);
+// Validation de l'origine (Désactivé temporairement car il bloque Vercel)
+// app.use(validateOrigin);
 
 // Limite de taille des requêtes (10MB par défaut)
 app.use(requestSizeLimiter('10mb'));
