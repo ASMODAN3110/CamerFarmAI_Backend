@@ -1,12 +1,13 @@
 // src/controllers/auth.controller.ts
 import { Request, Response } from 'express';
 import { AuthService } from '../services/auth.service';
-import { RegisterDto, LoginDto, UpdateProfileDto, ForgotPasswordDto, ResetPasswordDto } from '../types/auth.types';
+import { RegisterDto, LoginDto, UpdateProfileDto, ForgotPasswordDto, ResetPasswordDto, GoogleAuthDto } from '../types/auth.types';
 import { validationResult } from 'express-validator';
 import { HttpException } from '../utils/HttpException';
 import { AppDataSource } from '../config/database';
 import { User } from '../models/User.entity';
 import { PasswordResetService } from '../services/password-reset.service';
+import { GoogleAuthService } from '../services/google-auth.service';
 import fs from 'fs';
 import path from 'path';
 
@@ -840,3 +841,71 @@ export const resetPassword = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * POST /api/v1/auth/google
+ * Authentification avec Google OAuth 2.0
+ */
+export const googleAuth = async (req: Request, res: Response) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: 'Données invalides',
+      errors: errors.array(),
+    });
+  }
+
+  const { idToken }: GoogleAuthDto = req.body;
+
+  try {
+    // Authentifier avec Google
+    const user = await GoogleAuthService.authenticateWithGoogle(idToken);
+
+    // Générer les tokens JWT
+    const { accessToken, refreshToken } = AuthService.generateTokens(user);
+
+    // Cookie HttpOnly + Secure (en prod) pour le refresh token
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 jours
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Connexion Google réussie',
+      data: {
+        user: {
+          id: user.id,
+          phone: user.phone,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          role: user.role,
+          avatarUrl: user.avatarUrl,
+          authProvider: user.authProvider,
+        },
+        accessToken,
+      },
+    });
+  } catch (error: any) {
+    console.error('Erreur authentification Google:', error);
+
+    if (error instanceof HttpException) {
+      return res.status(error.statusCode).json({
+        success: false,
+        message: error.message,
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: error?.message || 'Erreur serveur lors de l\'authentification Google',
+      ...(process.env.NODE_ENV === 'development' && {
+        error: error?.message,
+        stack: error?.stack,
+      }),
+    });
+  }
+};

@@ -18,6 +18,7 @@ export enum UserRole {
 
 export enum AuthProvider {
   LOCAL = 'local',
+  GOOGLE = 'google',
 }
 
 @Entity('users')
@@ -25,8 +26,8 @@ export class User {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @Column({ unique: true })
-  phone!: string;                    // Numéro principal au Cameroun
+  @Column({ type: 'varchar', unique: true, nullable: true })
+  phone!: string | null;                    // Numéro principal au Cameroun (nullable pour les utilisateurs Google)
 
   @Column({ 
     type: 'varchar', 
@@ -36,10 +37,10 @@ export class User {
   email!: string | null;
 
   @Column({ nullable: true })
-  firstName!: string;
+  firstName!: string | null;
 
   @Column({ nullable: true })
-  lastName!: string;
+  lastName!: string | null;
 
   @Column({
     type: 'enum',
@@ -69,6 +70,9 @@ export class User {
 
   @Column({ type: 'varchar', nullable: true })
   avatarUrl!: string | null;
+
+  @Column({ type: 'varchar', nullable: true, unique: true })
+  googleId!: string | null;                 // ID Google de l'utilisateur
 
   @CreateDateColumn()
   createdAt!: Date;

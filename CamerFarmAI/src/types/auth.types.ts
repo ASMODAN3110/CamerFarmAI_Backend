@@ -32,3 +32,19 @@ export class RegisterDto {
     token: string;
     newPassword: string;
   }
+
+  // GoogleAuthDto
+  export interface GoogleAuthDto {
+    idToken: string;
+  }
+
+  // GoogleUserInfo
+  export interface GoogleUserInfo {
+    sub: string;              // Google ID
+    email: string;
+    email_verified: boolean;
+    name?: string;
+    given_name?: string;      // Prénom
+    family_name?: string;     // Nom
+    picture?: string;         // URL de la photo de profil
+  }

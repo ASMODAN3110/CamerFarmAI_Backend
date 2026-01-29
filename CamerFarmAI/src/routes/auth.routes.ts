@@ -470,4 +470,59 @@ authRouter.post('/forgot-password', validateForgotPassword, sanitizeInput, authC
  */
 authRouter.post('/reset-password', validateResetPassword, sanitizeInput, authController.resetPassword);
 
+// Middleware de validation pour l'authentification Google
+const validateGoogleAuth = [
+  body('idToken')
+    .notEmpty()
+    .withMessage('Le token Google est requis')
+    .isString()
+    .withMessage('Le token Google doit être une chaîne de caractères'),
+];
+
+/**
+ * @swagger
+ * /auth/google:
+ *   post:
+ *     summary: Authentification avec Google OAuth 2.0
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - idToken
+ *             properties:
+ *               idToken:
+ *                 type: string
+ *                 description: Token ID Google obtenu depuis le frontend
+ *     responses:
+ *       200:
+ *         description: Authentification Google réussie
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       type: object
+ *                     accessToken:
+ *                       type: string
+ *       400:
+ *         description: Données invalides
+ *       401:
+ *         description: Token Google invalide ou expiré
+ *       409:
+ *         description: Un compte existe déjà avec cet email
+ */
+authRouter.post('/google', validateGoogleAuth, sanitizeInput, authController.googleAuth);
+
 export default authRouter;
