@@ -109,7 +109,7 @@ export class AddGoogleAuthToUsers1700000023000 implements MigrationInterface {
         SELECT COUNT(*) as count FROM "users" WHERE "phone" IS NULL
       `);
 
-      if (nullPhones[0].count === '0') {
+      if (parseInt(nullPhones[0].count) === 0) {
         await queryRunner.query(`
           ALTER TABLE "users" ALTER COLUMN "phone" SET NOT NULL
         `);

@@ -36,10 +36,10 @@ export class User {
   })
   email!: string | null;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   firstName!: string | null;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   lastName!: string | null;
 
   @Column({
