@@ -68,7 +68,115 @@ export class GoogleAuthService {
   }
 
   /**
-   * Trouve ou crée un utilisateur à partir des informations Google
+   * Trouve un utilisateur existant à partir des informations Google (pour connexion)
+   */
+  static async findUser(googleUserInfo: GoogleUserInfo): Promise<User> {
+    const { sub: googleId, email } = googleUserInfo;
+
+    // 1. Chercher d'abord par googleId
+    let user = await userRepository.findOne({ where: { googleId } });
+
+    if (user) {
+      // Utilisateur existe déjà avec ce googleId
+      // Vérifier que le compte est actif
+      if (!user.isActive) {
+        throw new HttpException(403, 'Votre compte a été désactivé. Veuillez contacter l\'administrateur.');
+      }
+
+      // Mettre à jour les informations si nécessaire
+      const { given_name, family_name, picture } = googleUserInfo;
+      if (email && email !== user.email) {
+        user.email = email;
+      }
+      if (given_name && given_name !== user.firstName) {
+        user.firstName = given_name;
+      }
+      if (family_name && family_name !== user.lastName) {
+        user.lastName = family_name;
+      }
+      if (picture && picture !== user.avatarUrl) {
+        user.avatarUrl = picture;
+      }
+
+      return await userRepository.save(user);
+    }
+
+    // 2. Chercher par email
+    if (email) {
+      user = await userRepository.findOne({ where: { email } });
+
+      if (user) {
+        // Vérifier le provider
+        if (user.authProvider === AuthProvider.LOCAL) {
+          throw new HttpException(
+            409,
+            'Un compte existe déjà avec cet email. Veuillez vous connecter avec votre mot de passe ou utiliser un autre compte Google.'
+          );
+        } else if (user.authProvider === AuthProvider.GOOGLE) {
+          // Compte Google existant mais sans googleId (cas rare)
+          // Mettre à jour avec le googleId
+          const { given_name, family_name, picture } = googleUserInfo;
+          user.googleId = googleId;
+          if (given_name) user.firstName = given_name;
+          if (family_name) user.lastName = family_name;
+          if (picture) user.avatarUrl = picture;
+
+          return await userRepository.save(user);
+        }
+      }
+    }
+
+    // Utilisateur non trouvé
+    throw new HttpException(404, 'Aucun compte trouvé avec ce compte Google. Veuillez vous inscrire d\'abord.');
+  }
+
+  /**
+   * Crée un nouvel utilisateur à partir des informations Google (pour inscription)
+   */
+  static async createUser(googleUserInfo: GoogleUserInfo): Promise<User> {
+    const { sub: googleId, email, given_name, family_name, picture } = googleUserInfo;
+
+    // 1. Vérifier si un utilisateur existe déjà avec ce googleId
+    let existingUser = await userRepository.findOne({ where: { googleId } });
+    if (existingUser) {
+      throw new HttpException(409, 'Un compte existe déjà avec ce compte Google. Veuillez vous connecter.');
+    }
+
+    // 2. Vérifier si un utilisateur existe avec cet email
+    if (email) {
+      existingUser = await userRepository.findOne({ where: { email } });
+      if (existingUser) {
+        if (existingUser.authProvider === AuthProvider.LOCAL) {
+          throw new HttpException(
+            409,
+            'Un compte existe déjà avec cet email. Veuillez vous connecter avec votre mot de passe ou utiliser un autre compte Google.'
+          );
+        } else if (existingUser.authProvider === AuthProvider.GOOGLE) {
+          throw new HttpException(409, 'Un compte existe déjà avec ce compte Google. Veuillez vous connecter.');
+        }
+      }
+    }
+
+    // 3. Créer un nouvel utilisateur
+    const newUserData: Partial<User> = {
+      googleId: googleId,
+      email: email || null,
+      firstName: given_name || null,
+      lastName: family_name || null,
+      avatarUrl: picture || null,
+      phone: null, // Nullable, l'utilisateur pourra l'ajouter plus tard
+      authProvider: AuthProvider.GOOGLE,
+      role: UserRole.FARMER, // Rôle par défaut
+      password: null, // Pas de mot de passe pour les utilisateurs Google
+      isActive: true,
+    };
+    
+    const newUser = userRepository.create(newUserData);
+    return await userRepository.save(newUser);
+  }
+
+  /**
+   * Trouve ou crée un utilisateur à partir des informations Google (méthode legacy)
    */
   static async findOrCreateUser(googleUserInfo: GoogleUserInfo): Promise<User> {
     const { sub: googleId, email, given_name, family_name, picture } = googleUserInfo;
@@ -149,7 +257,29 @@ export class GoogleAuthService {
   }
 
   /**
-   * Authentifie un utilisateur avec un token Google
+   * Authentifie un utilisateur existant avec un token Google (connexion)
+   */
+  static async loginWithGoogle(idToken: string): Promise<User> {
+    // Vérifier le token
+    const googleUserInfo = await this.verifyIdToken(idToken);
+
+    // Trouver l'utilisateur existant
+    return await this.findUser(googleUserInfo);
+  }
+
+  /**
+   * Inscrit un nouvel utilisateur avec un token Google (inscription)
+   */
+  static async registerWithGoogle(idToken: string): Promise<User> {
+    // Vérifier le token
+    const googleUserInfo = await this.verifyIdToken(idToken);
+
+    // Créer un nouvel utilisateur
+    return await this.createUser(googleUserInfo);
+  }
+
+  /**
+   * Authentifie un utilisateur avec un token Google (méthode legacy - trouve ou crée)
    * Combine verifyIdToken et findOrCreateUser
    */
   static async authenticateWithGoogle(idToken: string): Promise<User> {

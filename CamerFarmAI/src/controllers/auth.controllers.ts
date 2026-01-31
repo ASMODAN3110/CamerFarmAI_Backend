@@ -842,10 +842,10 @@ export const resetPassword = async (req: Request, res: Response) => {
 };
 
 /**
- * POST /api/v1/auth/google
- * Authentification avec Google OAuth 2.0
+ * POST /api/v1/auth/google/login
+ * Connexion avec Google OAuth 2.0 (utilisateur existant)
  */
-export const googleAuth = async (req: Request, res: Response) => {
+export const googleLogin = async (req: Request, res: Response) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({
@@ -858,8 +858,8 @@ export const googleAuth = async (req: Request, res: Response) => {
   const { idToken }: GoogleAuthDto = req.body;
 
   try {
-    // Authentifier avec Google
-    const user = await GoogleAuthService.authenticateWithGoogle(idToken);
+    // Trouver l'utilisateur existant
+    const user = await GoogleAuthService.loginWithGoogle(idToken);
 
     // Générer les tokens JWT
     const { accessToken, refreshToken } = AuthService.generateTokens(user);
@@ -875,6 +875,145 @@ export const googleAuth = async (req: Request, res: Response) => {
     return res.status(200).json({
       success: true,
       message: 'Connexion Google réussie',
+      data: {
+        user: {
+          id: user.id,
+          phone: user.phone,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          role: user.role,
+          avatarUrl: user.avatarUrl,
+          authProvider: user.authProvider,
+        },
+        accessToken,
+      },
+    });
+  } catch (error: any) {
+    console.error('Erreur connexion Google:', error);
+
+    if (error instanceof HttpException) {
+      return res.status(error.statusCode).json({
+        success: false,
+        message: error.message,
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: error?.message || 'Erreur serveur lors de la connexion Google',
+      ...(process.env.NODE_ENV === 'development' && {
+        error: error?.message,
+        stack: error?.stack,
+      }),
+    });
+  }
+};
+
+/**
+ * POST /api/v1/auth/google/register
+ * Inscription avec Google OAuth 2.0 (nouvel utilisateur)
+ */
+export const googleRegister = async (req: Request, res: Response) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: 'Données invalides',
+      errors: errors.array(),
+    });
+  }
+
+  const { idToken }: GoogleAuthDto = req.body;
+
+  try {
+    // Créer un nouvel utilisateur
+    const user = await GoogleAuthService.registerWithGoogle(idToken);
+
+    // Générer les tokens JWT
+    const { accessToken, refreshToken } = AuthService.generateTokens(user);
+
+    // Cookie HttpOnly + Secure (en prod) pour le refresh token
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 jours
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: 'Inscription Google réussie',
+      data: {
+        user: {
+          id: user.id,
+          phone: user.phone,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          role: user.role,
+          avatarUrl: user.avatarUrl,
+          authProvider: user.authProvider,
+        },
+        accessToken,
+      },
+    });
+  } catch (error: any) {
+    console.error('Erreur inscription Google:', error);
+
+    if (error instanceof HttpException) {
+      return res.status(error.statusCode).json({
+        success: false,
+        message: error.message,
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: error?.message || 'Erreur serveur lors de l\'inscription Google',
+      ...(process.env.NODE_ENV === 'development' && {
+        error: error?.message,
+        stack: error?.stack,
+      }),
+    });
+  }
+};
+
+/**
+ * POST /api/v1/auth/google
+ * Authentification avec Google OAuth 2.0 (méthode legacy - trouve ou crée)
+ * @deprecated Utilisez /auth/google/login ou /auth/google/register à la place
+ */
+export const googleAuth = async (req: Request, res: Response) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: 'Données invalides',
+      errors: errors.array(),
+    });
+  }
+
+  const { idToken }: GoogleAuthDto = req.body;
+
+  try {
+    // Authentifier avec Google (trouve ou crée)
+    const user = await GoogleAuthService.authenticateWithGoogle(idToken);
+
+    // Générer les tokens JWT
+    const { accessToken, refreshToken } = AuthService.generateTokens(user);
+
+    // Cookie HttpOnly + Secure (en prod) pour le refresh token
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 jours
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Authentification Google réussie',
       data: {
         user: {
           id: user.id,

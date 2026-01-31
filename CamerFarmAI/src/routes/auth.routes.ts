@@ -481,9 +481,105 @@ const validateGoogleAuth = [
 
 /**
  * @swagger
+ * /auth/google/login:
+ *   post:
+ *     summary: Connexion avec Google OAuth 2.0 (utilisateur existant)
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - idToken
+ *             properties:
+ *               idToken:
+ *                 type: string
+ *                 description: Token ID Google obtenu depuis le frontend
+ *     responses:
+ *       200:
+ *         description: Connexion Google réussie
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       type: object
+ *                     accessToken:
+ *                       type: string
+ *       400:
+ *         description: Données invalides
+ *       401:
+ *         description: Token Google invalide ou expiré
+ *       404:
+ *         description: Aucun compte trouvé avec ce compte Google
+ *       409:
+ *         description: Un compte existe déjà avec cet email
+ */
+authRouter.post('/google/login', validateGoogleAuth, sanitizeInput, authController.googleLogin);
+
+/**
+ * @swagger
+ * /auth/google/register:
+ *   post:
+ *     summary: Inscription avec Google OAuth 2.0 (nouvel utilisateur)
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - idToken
+ *             properties:
+ *               idToken:
+ *                 type: string
+ *                 description: Token ID Google obtenu depuis le frontend
+ *     responses:
+ *       201:
+ *         description: Inscription Google réussie
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       type: object
+ *                     accessToken:
+ *                       type: string
+ *       400:
+ *         description: Données invalides
+ *       401:
+ *         description: Token Google invalide ou expiré
+ *       409:
+ *         description: Un compte existe déjà avec ce compte Google ou cet email
+ */
+authRouter.post('/google/register', validateGoogleAuth, sanitizeInput, authController.googleRegister);
+
+/**
+ * @swagger
  * /auth/google:
  *   post:
- *     summary: Authentification avec Google OAuth 2.0
+ *     summary: Authentification avec Google OAuth 2.0 (méthode legacy - trouve ou crée)
+ *     deprecated: true
+ *     description: Utilisez /auth/google/login ou /auth/google/register à la place
  *     tags: [Auth]
  *     requestBody:
  *       required: true
