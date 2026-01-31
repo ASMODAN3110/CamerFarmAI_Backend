@@ -65,6 +65,10 @@ SMTP_PORT=587
 SMTP_USER=votre_email@gmail.com
 SMTP_PASS=votre_mot_de_passe_application_gmail
 SMTP_FROM=noreply@camerfarmai.com  # Optionnel (défaut: SMTP_USER)
+
+# Google OAuth 2.0 - Optionnel
+GOOGLE_CLIENT_ID=votre_client_id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=votre_client_secret
 ```
 
 3. **Initialiser la base de données**
@@ -115,6 +119,9 @@ npm run test:email         # Tester la configuration SMTP et l'envoi d'emails
 | POST | `/refresh` | Rafraîchir le token d'accès | Public |
 | POST | `/forgot-password` | Demande de réinitialisation de mot de passe (envoie un email) | Public |
 | POST | `/reset-password` | Réinitialiser le mot de passe avec token | Public |
+| POST | `/google/login` | Connexion avec Google OAuth 2.0 (utilisateur existant) | Public |
+| POST | `/google/register` | Inscription avec Google OAuth 2.0 (nouvel utilisateur) | Public |
+| POST | `/google` | Authentification Google (legacy - trouve ou crée) | Public |
 | GET | `/me` | Récupérer les infos de l'utilisateur connecté | Privé |
 | PUT | `/profile` | Mettre à jour le profil utilisateur | Privé |
 | POST | `/profile/avatar` | Upload de l'avatar utilisateur | Privé |
@@ -122,6 +129,50 @@ npm run test:email         # Tester la configuration SMTP et l'envoi d'emails
 | GET | `/2fa/generate` | Générer un secret 2FA et QR code | Privé |
 | POST | `/2fa/enable` | Activer le 2FA | Privé |
 | POST | `/2fa/disable` | Désactiver le 2FA | Privé |
+
+**Authentification Google OAuth 2.0 :**
+
+Les endpoints `/auth/google/login` et `/auth/google/register` permettent respectivement de se connecter et de s'inscrire avec un compte Google.
+
+**Format de requête :**
+```json
+POST /api/v1/auth/google/login
+POST /api/v1/auth/google/register
+Content-Type: application/json
+
+{
+  "idToken": "token_id_google_obtenu_depuis_le_frontend"
+}
+```
+
+**Réponses :**
+
+- **200 (login)** / **201 (register)** : Succès
+  ```json
+  {
+    "success": true,
+    "message": "Connexion Google réussie" | "Inscription Google réussie",
+    "data": {
+      "user": {
+        "id": "uuid",
+        "phone": "string | null",
+        "firstName": "string | null",
+        "lastName": "string | null",
+        "email": "string | null",
+        "role": "farmer" | "technician" | "admin",
+        "avatarUrl": "string | null",
+        "authProvider": "google"
+      },
+      "accessToken": "jwt_token"
+    }
+  }
+  ```
+
+- **404 (login)** : Aucun compte trouvé → rediriger vers l'inscription
+- **409 (register)** : Compte existe déjà → rediriger vers la connexion
+- **401** : Token Google invalide ou expiré
+
+> 📘 **Configuration** : Consultez [CONFIGURATION_GOOGLE_OAUTH.md](./CONFIGURATION_GOOGLE_OAUTH.md) pour la configuration complète de Google OAuth 2.0
 
 ### Plantations (`/api/v1/plantations`)
 
@@ -355,6 +406,9 @@ GET /api/v1/technician/farmers?search[]=Jean&search[]=Dupont
 
 ### Authentification
 - Inscription et connexion avec JWT (connexion par email)
+- Authentification Google OAuth 2.0 avec distinction connexion/inscription
+  - `/auth/google/login` : Connexion pour utilisateurs existants
+  - `/auth/google/register` : Inscription pour nouveaux utilisateurs
 - Authentification à deux facteurs (2FA) avec TOTP
 - Refresh tokens dans des cookies HttpOnly
 - Gestion des rôles (FARMER, TECHNICIAN, ADMIN)
@@ -536,6 +590,7 @@ Consultez [SECURITE.md](./SECURITE.md) pour plus de détails.
 ### ✅ Implémenté
 
 - [x] Authentification JWT complète avec refresh tokens
+- [x] Authentification Google OAuth 2.0 (connexion et inscription séparées)
 - [x] Authentification à deux facteurs (2FA) avec TOTP
 - [x] Gestion des rôles (FARMER, TECHNICIAN, ADMIN)
 - [x] CRUD plantations avec mode automatique/manuel
@@ -701,6 +756,7 @@ Cela permet au frontend de fonctionner même si la variable d'environnement oubl
 ## Documentation complémentaire
 
 - [CONFIGURATION_EMAIL.md](./CONFIGURATION_EMAIL.md) - Guide de configuration SMTP Gmail
+- [CONFIGURATION_GOOGLE_OAUTH.md](./CONFIGURATION_GOOGLE_OAUTH.md) - Guide de configuration Google OAuth 2.0
 - [DOCUMENTATION_NOTIFICATIONS_EMAIL.md](./DOCUMENTATION_NOTIFICATIONS_EMAIL.md) - Documentation technique complète du système de notifications par email
 - [SECURITE.md](./SECURITE.md) - Mesures de sécurité détaillées
 - [README_FRONTEND_ADMIN.md](./README_FRONTEND_ADMIN.md) - Documentation complète pour le frontend sur les fonctionnalités administrateur
