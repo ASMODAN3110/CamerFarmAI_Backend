@@ -196,7 +196,12 @@ Content-Type: application/json
 | POST | `/:id/sensors/:sensorId/readings` | Ajouter une lecture (active automatiquement le capteur) | Privé (FARMER propriétaire) |
 | GET | `/:id/sensors/:sensorId/readings` | Obtenir les lectures d'un capteur | Privé (FARMER propriétaire) |
 
-**Note** : Les statuts des capteurs (`ACTIVE`/`INACTIVE`) sont mis à jour automatiquement lors des appels à `GET /:id` et `GET /:id/sensors`. Un capteur devient `INACTIVE` s'il n'a pas reçu de lecture depuis 1 heure, et redevient `ACTIVE` dès qu'une nouvelle lecture est ajoutée.
+**Note sur les statuts des capteurs :**
+- Les statuts (`ACTIVE`/`INACTIVE`) sont mis à jour automatiquement lors des appels à `GET /:id` et `GET /:id/sensors`
+- **Désactivation automatique** : Un capteur devient `INACTIVE` s'il n'a pas reçu de lecture depuis **1 heure**
+- **Activation automatique** : Un capteur redevient `ACTIVE` dès qu'une nouvelle lecture est ajoutée via `POST /:id/sensors/:sensorId/readings`
+- **Notifications** : Le propriétaire reçoit une notification (WEB, EMAIL) à chaque changement de statut
+- **Modification manuelle** : Le statut peut être modifié manuellement via `PATCH /:id/sensors/:sensorId` avec `{ "status": "active" | "inactive" }`
 
 ### Actionneurs (`/api/v1/plantations/:id/actuators`)
 
@@ -398,8 +403,11 @@ GET /api/v1/technician/farmers?search[]=Jean&search[]=Dupont
 - Il est impossible de supprimer un compte ADMIN
 - Il est impossible de modifier le statut d'un compte ADMIN (activation/désactivation)
 - Les comptes ADMIN ne sont pas listés dans `/users` (seulement FARMER et TECHNICIAN)
-- Un compte désactivé (`isActive: false`) ne peut plus se connecter au système
-- Les tokens existants d'un compte désactivé sont invalidés au prochain appel API
+- **Désactivation de compte** :
+  - Un compte désactivé (`isActive: false`) ne peut plus se connecter au système (erreur 401 avec message explicite)
+  - Les tokens existants d'un compte désactivé sont invalidés au prochain appel API (vérification dans le middleware `protectRoute`)
+  - La vérification du statut se fait à chaque connexion et à chaque requête authentifiée
+  - Un compte peut être réactivé par un ADMIN via `PATCH /admin/users/:id/status` avec `{ "isActive": true }`
 - Le champ `isActive` est inclus dans les réponses de `/users` et `/users/:id`
 
 ## Fonctionnalités principales
@@ -414,7 +422,11 @@ GET /api/v1/technician/farmers?search[]=Jean&search[]=Dupont
 - Gestion des rôles (FARMER, TECHNICIAN, ADMIN)
 - Upload d'avatar utilisateur
 - Système d'activation/désactivation des comptes (`isActive`)
-- Vérification du statut du compte à chaque connexion et requête authentifiée
+  - Désactivation possible uniquement par un ADMIN (via `PATCH /admin/users/:id/status`)
+  - Un compte ADMIN ne peut pas être désactivé (protection)
+  - Un compte désactivé ne peut plus se connecter (erreur 401 avec message explicite)
+  - Les tokens existants d'un compte désactivé sont invalidés au prochain appel API
+  - Vérification du statut à chaque connexion et requête authentifiée
 - Réinitialisation de mot de passe par email avec token JWT temporaire (expiration 1h)
 - Email de bienvenue automatique lors de l'inscription (si email fourni et SMTP configuré)
 
@@ -430,7 +442,11 @@ GET /api/v1/technician/farmers?search[]=Jean&search[]=Dupont
 - Vérification automatique des seuils lors des lectures
 - Génération d'événements lorsque les seuils sont dépassés
 - Historique des lectures (100 dernières)
-- **Gestion automatique des statuts** : Les capteurs passent automatiquement à `INACTIVE` s'ils n'envoient pas de valeur depuis 1 heure, et redeviennent `ACTIVE` dès qu'ils envoient une nouvelle valeur
+- **Gestion automatique des statuts** : 
+  - Les capteurs passent automatiquement à `INACTIVE` s'ils n'envoient pas de valeur depuis **1 heure**
+  - Les capteurs redeviennent `ACTIVE` automatiquement dès qu'une nouvelle lecture est ajoutée
+  - La vérification des statuts se fait lors des appels API (`GET /plantations/:id`, `GET /plantations/:id/sensors`, etc.)
+  - Modification manuelle possible via `PATCH /plantations/:id/sensors/:sensorId`
 - **Notifications de changement de statut** : Le propriétaire de la plantation reçoit automatiquement des notifications (WEB, EMAIL) lorsque ses capteurs changent de statut (ACTIVE ↔ INACTIVE)
 
 ### Actionneurs
