@@ -1,6 +1,7 @@
 // src/services/auth.service.test.ts
 import * as jwt from 'jsonwebtoken';
 import * as speakeasy from 'speakeasy';
+import * as bcrypt from 'bcrypt';
 import { AuthService } from './auth.service';
 import { User, UserRole } from '../models/User.entity';
 
@@ -667,6 +668,315 @@ describe('AuthService.verifyTwoFactorToken', () => {
       expect(result1_2).toBe(false);
       expect(result2_1).toBe(false);
       expect(result2_2).toBe(true);
+    });
+  });
+});
+
+describe('User.validatePassword', () => {
+  // Helper pour créer un utilisateur avec un mot de passe hashé
+  const createUserWithHashedPassword = async (plainPassword: string, overrides?: Partial<User>): Promise<User> => {
+    const hashedPassword = await bcrypt.hash(plainPassword, 12);
+    const user = Object.create(User.prototype);
+    Object.assign(user, {
+      id: '123e4567-e89b-12d3-a456-426614174000',
+      phone: '+237612345678',
+      email: 'test@example.com',
+      firstName: 'Test',
+      lastName: 'User',
+      role: UserRole.FARMER,
+      password: hashedPassword,
+      authProvider: 'local' as any,
+      twoFactorSecret: null,
+      twoFactorEnabled: false,
+      isActive: true,
+      avatarUrl: null,
+      googleId: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      plantations: [],
+      ...overrides,
+    });
+    return user as User;
+  };
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe('Mots de passe valides', () => {
+    it('devrait retourner true pour un mot de passe correct', async () => {
+      const plainPassword = 'MySecurePassword123!';
+      const user = await createUserWithHashedPassword(plainPassword);
+
+      const result = await user.validatePassword(plainPassword);
+      expect(result).toBe(true);
+    });
+
+    it('devrait retourner true pour un mot de passe avec caractères spéciaux', async () => {
+      const plainPassword = 'P@ssw0rd!@#$%^&*()';
+      const user = await createUserWithHashedPassword(plainPassword);
+
+      const result = await user.validatePassword(plainPassword);
+      expect(result).toBe(true);
+    });
+
+    it('devrait retourner true pour un mot de passe long', async () => {
+      const plainPassword = 'VeryLongPassword123456789!@#$%^&*()';
+      const user = await createUserWithHashedPassword(plainPassword);
+
+      const result = await user.validatePassword(plainPassword);
+      expect(result).toBe(true);
+    });
+
+    it('devrait retourner true pour un mot de passe court mais valide', async () => {
+      const plainPassword = 'Short1!';
+      const user = await createUserWithHashedPassword(plainPassword);
+
+      const result = await user.validatePassword(plainPassword);
+      expect(result).toBe(true);
+    });
+
+    it('devrait retourner true pour un mot de passe avec espaces', async () => {
+      const plainPassword = 'Password With Spaces123!';
+      const user = await createUserWithHashedPassword(plainPassword);
+
+      const result = await user.validatePassword(plainPassword);
+      expect(result).toBe(true);
+    });
+
+    it('devrait retourner true pour un mot de passe avec caractères Unicode', async () => {
+      const plainPassword = 'Pässwörd123!';
+      const user = await createUserWithHashedPassword(plainPassword);
+
+      const result = await user.validatePassword(plainPassword);
+      expect(result).toBe(true);
+    });
+  });
+
+  describe('Mots de passe invalides', () => {
+    it('devrait retourner false pour un mot de passe incorrect', async () => {
+      const correctPassword = 'MySecurePassword123!';
+      const wrongPassword = 'WrongPassword123!';
+      const user = await createUserWithHashedPassword(correctPassword);
+
+      const result = await user.validatePassword(wrongPassword);
+      expect(result).toBe(false);
+    });
+
+    it('devrait retourner false pour un mot de passe avec une seule lettre différente', async () => {
+      const correctPassword = 'MySecurePassword123!';
+      const wrongPassword = 'MySecurePassword124!'; // Un seul caractère différent
+      const user = await createUserWithHashedPassword(correctPassword);
+
+      const result = await user.validatePassword(wrongPassword);
+      expect(result).toBe(false);
+    });
+
+    it('devrait retourner false pour un mot de passe avec casse différente', async () => {
+      const correctPassword = 'MySecurePassword123!';
+      const wrongPassword = 'MYSECUREPASSWORD123!'; // Tout en majuscules
+      const user = await createUserWithHashedPassword(correctPassword);
+
+      const result = await user.validatePassword(wrongPassword);
+      expect(result).toBe(false);
+    });
+
+    it('devrait retourner false pour un mot de passe vide quand le hash existe', async () => {
+      const correctPassword = 'MySecurePassword123!';
+      const emptyPassword = '';
+      const user = await createUserWithHashedPassword(correctPassword);
+
+      const result = await user.validatePassword(emptyPassword);
+      expect(result).toBe(false);
+    });
+
+    it('devrait retourner false pour un mot de passe partiel', async () => {
+      const correctPassword = 'MySecurePassword123!';
+      const partialPassword = 'MySecure'; // Seulement une partie du mot de passe
+      const user = await createUserWithHashedPassword(correctPassword);
+
+      const result = await user.validatePassword(partialPassword);
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('Cas limites - password null ou undefined', () => {
+    it('devrait retourner false quand password est null', async () => {
+      const user = Object.create(User.prototype);
+      Object.assign(user, {
+        id: '123e4567-e89b-12d3-a456-426614174000',
+        phone: '+237612345678',
+        email: 'test@example.com',
+        firstName: 'Test',
+        lastName: 'User',
+        role: UserRole.FARMER,
+        password: null,
+        authProvider: 'local' as any,
+        twoFactorSecret: null,
+        twoFactorEnabled: false,
+        isActive: true,
+        avatarUrl: null,
+        googleId: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        plantations: [],
+      });
+
+      const result = await user.validatePassword('anyPassword');
+      expect(result).toBe(false);
+    });
+
+    it('devrait retourner false quand password est undefined (via null)', async () => {
+      const user = Object.create(User.prototype);
+      Object.assign(user, {
+        id: '123e4567-e89b-12d3-a456-426614174000',
+        phone: '+237612345678',
+        email: 'test@example.com',
+        firstName: 'Test',
+        lastName: 'User',
+        role: UserRole.FARMER,
+        password: undefined as any,
+        authProvider: 'local' as any,
+        twoFactorSecret: null,
+        twoFactorEnabled: false,
+        isActive: true,
+        avatarUrl: null,
+        googleId: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        plantations: [],
+      });
+
+      const result = await user.validatePassword('anyPassword');
+      expect(result).toBe(false);
+    });
+
+    it('devrait retourner false pour un utilisateur Google (sans mot de passe)', async () => {
+      const user = Object.create(User.prototype);
+      Object.assign(user, {
+        id: '123e4567-e89b-12d3-a456-426614174000',
+        phone: null,
+        email: 'google@example.com',
+        firstName: 'Google',
+        lastName: 'User',
+        role: UserRole.FARMER,
+        password: null, // Les utilisateurs Google n'ont pas de mot de passe
+        authProvider: 'google' as any,
+        twoFactorSecret: null,
+        twoFactorEnabled: false,
+        isActive: true,
+        avatarUrl: null,
+        googleId: 'google-id-123',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        plantations: [],
+      });
+
+      const result = await user.validatePassword('anyPassword');
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('Cas limites - chaînes vides et valeurs spéciales', () => {
+    it('devrait retourner false pour une chaîne vide quand password est hashé', async () => {
+      const plainPassword = 'MySecurePassword123!';
+      const user = await createUserWithHashedPassword(plainPassword);
+
+      const result = await user.validatePassword('');
+      expect(result).toBe(false);
+    });
+
+    it('devrait gérer correctement les espaces en début et fin', async () => {
+      const plainPassword = 'MySecurePassword123!';
+      const passwordWithSpaces = ' MySecurePassword123! '; // Espaces ajoutés
+      const user = await createUserWithHashedPassword(plainPassword);
+
+      const result = await user.validatePassword(passwordWithSpaces);
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('Sécurité et robustesse', () => {
+    it('devrait être sensible à la casse', async () => {
+      const plainPassword = 'MySecurePassword123!';
+      const user = await createUserWithHashedPassword(plainPassword);
+
+      // Tester différentes variations de casse
+      expect(await user.validatePassword('mysecurepassword123!')).toBe(false);
+      expect(await user.validatePassword('MYSECUREPASSWORD123!')).toBe(false);
+      expect(await user.validatePassword('MySecurePassword123!')).toBe(true);
+    });
+
+    it('devrait être sensible aux caractères spéciaux', async () => {
+      const plainPassword = 'Password123!';
+      const user = await createUserWithHashedPassword(plainPassword);
+
+      // Tester avec un caractère spécial différent
+      expect(await user.validatePassword('Password123@')).toBe(false);
+      expect(await user.validatePassword('Password123!')).toBe(true);
+    });
+
+    it('devrait fonctionner avec plusieurs validations successives', async () => {
+      const plainPassword = 'MySecurePassword123!';
+      const user = await createUserWithHashedPassword(plainPassword);
+
+      // Valider plusieurs fois le même mot de passe
+      const result1 = await user.validatePassword(plainPassword);
+      const result2 = await user.validatePassword(plainPassword);
+      const result3 = await user.validatePassword(plainPassword);
+
+      expect(result1).toBe(true);
+      expect(result2).toBe(true);
+      expect(result3).toBe(true);
+    });
+
+    it('devrait fonctionner avec différents mots de passe pour différents utilisateurs', async () => {
+      const password1 = 'Password1!';
+      const password2 = 'Password2!';
+      
+      const user1 = await createUserWithHashedPassword(password1);
+      const user2 = await createUserWithHashedPassword(password2);
+
+      // Chaque utilisateur devrait valider uniquement son propre mot de passe
+      expect(await user1.validatePassword(password1)).toBe(true);
+      expect(await user1.validatePassword(password2)).toBe(false);
+      expect(await user2.validatePassword(password1)).toBe(false);
+      expect(await user2.validatePassword(password2)).toBe(true);
+    });
+  });
+
+  describe('Performance et comportement asynchrone', () => {
+    it('devrait retourner une Promise<boolean>', async () => {
+      const plainPassword = 'MySecurePassword123!';
+      const user = await createUserWithHashedPassword(plainPassword);
+
+      const result = user.validatePassword(plainPassword);
+      expect(result).toBeInstanceOf(Promise);
+      
+      const resolvedResult = await result;
+      expect(typeof resolvedResult).toBe('boolean');
+    });
+
+    it('devrait gérer correctement les validations concurrentes', async () => {
+      const plainPassword = 'MySecurePassword123!';
+      const user = await createUserWithHashedPassword(plainPassword);
+
+      // Lancer plusieurs validations en parallèle
+      const promises = [
+        user.validatePassword(plainPassword),
+        user.validatePassword(plainPassword),
+        user.validatePassword(plainPassword),
+        user.validatePassword('wrongPassword'),
+        user.validatePassword('wrongPassword'),
+      ];
+
+      const results = await Promise.all(promises);
+      
+      expect(results[0]).toBe(true);
+      expect(results[1]).toBe(true);
+      expect(results[2]).toBe(true);
+      expect(results[3]).toBe(false);
+      expect(results[4]).toBe(false);
     });
   });
 });
