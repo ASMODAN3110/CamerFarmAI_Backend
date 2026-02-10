@@ -1,8 +1,7 @@
 // src/services/event/EventService.test.ts
 import { EventService } from './EventService';
 import { Event, EventType } from '../../models/Event.entity';
-import { Sensor, SensorType, SensorStatus } from '../../models/Sensor.entity';
-import { SensorReading } from '../../models/SensorReading.entity';
+import { SensorType } from '../../models/Sensor.entity';
 import { AppDataSource } from '../../config/database';
 
 // Mock AppDataSource
@@ -525,8 +524,7 @@ describe('EventService.checkSensorThresholds', () => {
       expect(result).not.toBeNull();
       expect(mockEventRepository.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          description: expect.stringContaining('9.25'),
-          description: expect.stringContaining('10.5'),
+          description: expect.stringMatching(/9\.25.*10\.5|10\.5.*9\.25/),
         })
       );
     });
@@ -549,8 +547,7 @@ describe('EventService.checkSensorThresholds', () => {
       expect(result).not.toBeNull();
       expect(mockEventRepository.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          description: expect.stringContaining('-15'),
-          description: expect.stringContaining('-10'),
+          description: expect.stringMatching(/-15.*-10|-10.*-15/),
         })
       );
     });
@@ -573,8 +570,7 @@ describe('EventService.checkSensorThresholds', () => {
       expect(result).not.toBeNull();
       expect(mockEventRepository.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          description: expect.stringContaining('15000'),
-          description: expect.stringContaining('10000'),
+          description: expect.stringMatching(/15000.*10000|10000.*15000/),
         })
       );
     });
