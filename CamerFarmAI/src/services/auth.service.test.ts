@@ -672,6 +672,162 @@ describe('AuthService.verifyTwoFactorToken', () => {
   });
 });
 
+describe('AuthService.verifyTemporaryToken', () => {
+  const JWT_SECRET = process.env.JWT_SECRET || 'test-secret-key';
+
+  beforeEach(() => {
+    process.env.JWT_SECRET = JWT_SECRET;
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe('Token temporaire valide', () => {
+    it('devrait retourner { userId } pour un token temporaire valide', () => {
+      const userId = 'user-id-2fa-123';
+      const token = AuthService.generateTemporaryToken(userId);
+
+      const result = AuthService.verifyTemporaryToken(token);
+
+      expect(result).not.toBeNull();
+      expect(result).toEqual({ userId });
+    });
+
+    it('devrait retourner le bon userId pour différents utilisateurs', () => {
+      const userId1 = 'user-1-uuid';
+      const userId2 = 'user-2-uuid';
+
+      const token1 = AuthService.generateTemporaryToken(userId1);
+      const token2 = AuthService.generateTemporaryToken(userId2);
+
+      const result1 = AuthService.verifyTemporaryToken(token1);
+      const result2 = AuthService.verifyTemporaryToken(token2);
+
+      expect(result1).toEqual({ userId: userId1 });
+      expect(result2).toEqual({ userId: userId2 });
+    });
+
+    it('devrait accepter un token généré avec generateTemporaryToken', () => {
+      const userId = '123e4567-e89b-12d3-a456-426614174000';
+      const token = AuthService.generateTemporaryToken(userId);
+
+      const result = AuthService.verifyTemporaryToken(token);
+
+      expect(result).toEqual({ userId });
+    });
+  });
+
+  describe('Token invalide ou expiré', () => {
+    it('devrait retourner null pour une chaîne vide', () => {
+      const result = AuthService.verifyTemporaryToken('');
+      expect(result).toBeNull();
+    });
+
+    it('devrait retourner null pour un token malformé', () => {
+      const result = AuthService.verifyTemporaryToken('not-a-valid-jwt');
+      expect(result).toBeNull();
+    });
+
+    it('devrait retourner null pour un token signé avec un mauvais secret', () => {
+      const token = AuthService.generateTemporaryToken('user-123');
+      const tamperedToken = token.slice(0, -5) + 'xxxxx'; // Token invalide
+
+      const result = AuthService.verifyTemporaryToken(tamperedToken);
+      expect(result).toBeNull();
+    });
+
+    it('devrait retourner null pour un JWT valide mais avec un autre type (ex: access token)', () => {
+      const user = {
+        id: 'user-123',
+        phone: '+237612345678',
+        role: 'farmer' as const,
+      };
+      const accessToken = jwt.sign(
+        { sub: user.id, phone: user.phone, role: user.role },
+        JWT_SECRET,
+        { expiresIn: '15m' }
+      );
+
+      const result = AuthService.verifyTemporaryToken(accessToken);
+
+      expect(result).toBeNull();
+    });
+
+    it('devrait retourner null pour un JWT avec type différent de 2fa_verification', () => {
+      const wrongTypeToken = jwt.sign(
+        { sub: 'user-123', type: 'other_type' },
+        JWT_SECRET,
+        { expiresIn: '5m' }
+      );
+
+      const result = AuthService.verifyTemporaryToken(wrongTypeToken);
+
+      expect(result).toBeNull();
+    });
+
+    it('devrait retourner null pour un JWT sans sub', () => {
+      const noSubToken = jwt.sign(
+        { type: '2fa_verification' },
+        JWT_SECRET,
+        { expiresIn: '5m' }
+      );
+
+      const result = AuthService.verifyTemporaryToken(noSubToken);
+
+      expect(result).toBeNull();
+    });
+
+    it('devrait retourner null pour un token expiré', () => {
+      const expiredToken = jwt.sign(
+        { sub: 'user-123', type: '2fa_verification' },
+        JWT_SECRET,
+        { expiresIn: '-1s' } // Déjà expiré
+      );
+
+      const result = AuthService.verifyTemporaryToken(expiredToken);
+
+      expect(result).toBeNull();
+    });
+
+    it('devrait retourner null pour un token signé avec un secret différent', () => {
+      const tokenWithWrongSecret = jwt.sign(
+        { sub: 'user-123', type: '2fa_verification' },
+        'wrong-secret-key',
+        { expiresIn: '5m' }
+      );
+
+      const result = AuthService.verifyTemporaryToken(tokenWithWrongSecret);
+
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('Cas limites', () => {
+    it('devrait retourner null pour une chaîne de caractères aléatoire', () => {
+      const result = AuthService.verifyTemporaryToken('abc.def.ghi');
+      expect(result).toBeNull();
+    });
+
+    it('devrait retourner null pour un payload JSON sans signature JWT', () => {
+      const payload = Buffer.from(JSON.stringify({ sub: 'user-123', type: '2fa_verification' })).toString('base64url');
+      const fakeToken = `${payload}.${payload}.${payload}`;
+
+      const result = AuthService.verifyTemporaryToken(fakeToken);
+      expect(result).toBeNull();
+    });
+
+    it('devrait accepter un userId avec format UUID', () => {
+      const uuid = '123e4567-e89b-12d3-a456-426614174000';
+      const token = AuthService.generateTemporaryToken(uuid);
+
+      const result = AuthService.verifyTemporaryToken(token);
+
+      expect(result).toEqual({ userId: uuid });
+    });
+  });
+});
+
 describe('User.validatePassword', () => {
   // Helper pour créer un utilisateur avec un mot de passe hashé
   const createUserWithHashedPassword = async (plainPassword: string, overrides?: Partial<User>): Promise<User> => {
