@@ -113,5 +113,11 @@ describe('PasswordResetService', () => {
             const result = PasswordResetService.verifyResetToken('not-a-token');
             expect(result).toBeNull();
         });
+
+        it('devrait retourner null si le token ne contient pas de userId (claim "sub")', () => {
+            const token = jwt.sign({ type: 'password_reset' }, JWT_SECRET);
+            const result = PasswordResetService.verifyResetToken(token);
+            expect(result).toBeNull();
+        });
     });
 });
