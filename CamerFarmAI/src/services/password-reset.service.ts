@@ -11,7 +11,31 @@ if (!JWT_SECRET) {
   throw new Error('JWT_SECRET n\'est pas défini dans les variables d\'environnement');
 }
 
+import { AppDataSource } from '../config/database';
+
 export class PasswordResetService {
+  /**
+   * Trouve un utilisateur par son email
+   */
+  static async findUser(email: string): Promise<User | null> {
+    const userRepository = AppDataSource.getRepository(User);
+    return await userRepository.findOne({ where: { email } });
+  }
+
+  /**
+   * Crée un utilisateur de test (utile pour les tests d'intégration)
+   */
+  static async createUser(email: string, firstName: string, lastName: string): Promise<User> {
+    const userRepository = AppDataSource.getRepository(User);
+    const user = userRepository.create({
+      email,
+      firstName,
+      lastName,
+      isActive: true, // Par défaut actif
+    });
+    return await userRepository.save(user);
+  }
+
   /**
    * Génère un token JWT pour la réinitialisation de mot de passe
    * Expiration : 1 heure
@@ -34,7 +58,7 @@ export class PasswordResetService {
   static verifyResetToken(token: string): { userId: string } | null {
     try {
       const decoded = jwt.verify(token, JWT_SECRET) as jwt.JwtPayload & { type?: string };
-      
+
       // Vérifier que c'est bien un token de réinitialisation
       if (decoded.type !== 'password_reset') {
         return null;
@@ -103,8 +127,8 @@ export class PasswordResetService {
     const resetLink = `${frontendUrl}/reset-password?token=${resetToken}`;
 
     // Préparer le nom de l'utilisateur
-    const userName = user.firstName && user.lastName 
-      ? `${user.firstName} ${user.lastName}` 
+    const userName = user.firstName && user.lastName
+      ? `${user.firstName} ${user.lastName}`
       : user.firstName || user.lastName || 'Utilisateur';
 
     // Générer le template d'email
@@ -112,7 +136,7 @@ export class PasswordResetService {
 
     // Préparer l'email
     const smtpFrom = process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@camerfarmai.com';
-    
+
     const mailOptions: nodemailer.SendMailOptions = {
       from: smtpFrom,
       to: user.email,
