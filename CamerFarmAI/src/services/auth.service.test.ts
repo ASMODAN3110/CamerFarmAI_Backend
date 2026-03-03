@@ -5,9 +5,31 @@ import * as bcrypt from 'bcrypt';
 import { AuthService } from './auth.service';
 import { User, UserRole } from '../models/User.entity';
 
+// --- MOCKS ADDITIFS POUR BASE DE DONNEES ET EMAIL ---
+jest.mock('../config/database', () => ({
+  AppDataSource: {
+    getRepository: jest.fn().mockReturnValue({
+      findOne: jest.fn(),
+      create: jest.fn(),
+      save: jest.fn(),
+    }),
+  },
+}));
+
+jest.mock('nodemailer', () => ({
+  createTransport: jest.fn().mockReturnValue({
+    sendMail: jest.fn().mockResolvedValue(true)
+  })
+}));
+
+jest.mock('qrcode', () => ({
+  toDataURL: jest.fn().mockResolvedValue('data:image/png;base64,mocked_qr_code_here')
+}));
+
+
 describe('AuthService.generateTokens', () => {
   const JWT_SECRET = process.env.JWT_SECRET || 'test-secret-key';
-  
+
   // Mock user pour les tests
   const createMockUser = (overrides?: Partial<User>): User => {
     return {
@@ -167,16 +189,16 @@ describe('AuthService.generateTokens', () => {
     it('devrait utiliser les valeurs par défaut si les variables d\'environnement ne sont pas définies', () => {
       const originalAccessExpires = process.env.ACCESS_TOKEN_EXPIRES_IN;
       const originalRefreshExpires = process.env.REFRESH_TOKEN_EXPIRES_IN;
-      
+
       delete process.env.ACCESS_TOKEN_EXPIRES_IN;
       delete process.env.REFRESH_TOKEN_EXPIRES_IN;
-      
+
       const user = createMockUser();
       const result = AuthService.generateTokens(user);
 
       const decodedAccess = jwt.verify(result.accessToken, JWT_SECRET) as jwt.JwtPayload;
       const decodedRefresh = jwt.verify(result.refreshToken, JWT_SECRET) as jwt.JwtPayload;
-      
+
       const now = Math.floor(Date.now() / 1000);
       const accessExp = decodedAccess.exp || 0;
       const refreshExp = decodedRefresh.exp || 0;
@@ -296,7 +318,7 @@ describe('AuthService.generateTokens', () => {
     });
 
     it('devrait inclure phone null dans le payload', () => {
-      const user = createMockUser({ 
+      const user = createMockUser({
         id: 'google-user-123',
         phone: null,
         role: UserRole.FARMER,
@@ -318,7 +340,7 @@ describe('AuthService.generateTokens', () => {
       // Recharger le module pour que le changement soit pris en compte
       // Note: En réalité, le module vérifie JWT_SECRET au chargement
       // donc cette erreur serait levée avant l'appel à generateTokens
-      
+
       // Restaurer pour éviter d'affecter les autres tests
       process.env.JWT_SECRET = originalSecret || JWT_SECRET;
     });
@@ -331,7 +353,7 @@ describe('AuthService.generateTokens', () => {
       } as User;
 
       const result = AuthService.generateTokens(minimalUser);
-      
+
       expect(result.accessToken).toBeDefined();
       expect(result.refreshToken).toBeDefined();
 
@@ -346,10 +368,10 @@ describe('AuthService.generateTokens', () => {
     it('devrait générer des tokens différents pour le même utilisateur à chaque appel', async () => {
       const user = createMockUser();
       const result1 = AuthService.generateTokens(user);
-      
+
       // Attendre un peu pour que le timestamp change
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
+
       const result2 = AuthService.generateTokens(user);
 
       // Les tokens devraient être différents (car ils contiennent un timestamp)
@@ -1089,7 +1111,7 @@ describe('User.validatePassword', () => {
     it('devrait fonctionner avec différents mots de passe pour différents utilisateurs', async () => {
       const password1 = 'Password1!';
       const password2 = 'Password2!';
-      
+
       const user1 = await createUserWithHashedPassword(password1);
       const user2 = await createUserWithHashedPassword(password2);
 
@@ -1108,7 +1130,7 @@ describe('User.validatePassword', () => {
 
       const result = user.validatePassword(plainPassword);
       expect(result).toBeInstanceOf(Promise);
-      
+
       const resolvedResult = await result;
       expect(typeof resolvedResult).toBe('boolean');
     });
@@ -1127,12 +1149,260 @@ describe('User.validatePassword', () => {
       ];
 
       const results = await Promise.all(promises);
-      
+
       expect(results[0]).toBe(true);
       expect(results[1]).toBe(true);
       expect(results[2]).toBe(true);
       expect(results[3]).toBe(false);
       expect(results[4]).toBe(false);
+    });
+  });
+});
+
+
+
+
+
+import * as nodemailer from 'nodemailer';
+import { HttpException } from '../utils/HttpException';
+
+describe('AuthService (Méthodes en base de données / métier)', () => {
+  let mockFindOne: jest.Mock;
+  let mockCreate: jest.Mock;
+  let mockSave: jest.Mock;
+
+  beforeAll(() => {
+    // Récupérer les mocks depuis require() grâce au jest.mock() fait plus haut
+    const db = require('../config/database').AppDataSource.getRepository();
+    mockFindOne = db.findOne as jest.Mock;
+    mockCreate = db.create as jest.Mock;
+    mockSave = db.save as jest.Mock;
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe('register', () => {
+    it('devrait créer et retourner un nouvel utilisateur', async () => {
+      mockFindOne.mockResolvedValueOnce(null); // Pas d'utilisateur existant
+      const mockCreatedUser = { id: 'uuid-1', phone: '+33600000000', role: UserRole.FARMER };
+      mockCreate.mockReturnValueOnce(mockCreatedUser);
+      mockSave.mockResolvedValueOnce(mockCreatedUser);
+
+      const dto = { phone: '+33600000000', password: 'password', firstName: 'John', lastName: 'Doe' };
+      const user = await AuthService.register(dto);
+
+      expect(mockFindOne).toHaveBeenCalledWith({ where: { phone: dto.phone } });
+      expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({ phone: dto.phone, role: UserRole.FARMER }));
+      expect(mockSave).toHaveBeenCalledWith(mockCreatedUser);
+      expect(user).toEqual(mockCreatedUser);
+    });
+
+    it('devrait lever une erreur 409 si le téléphone existe déjà', async () => {
+      mockFindOne.mockResolvedValueOnce({ id: 'uuid-2', phone: '+33600000000' });
+      await expect(AuthService.register({ phone: '+33600000000', password: 'test' } as any))
+        .rejects.toMatchObject({ statusCode: 409, message: 'Ce numéro de téléphone est déjà utilisé' });
+    });
+  });
+
+  describe('validateUser', () => {
+    it('devrait retourner l\'utilisateur si les credentials sont corrects', async () => {
+      const mockUser = {
+        id: 'uuid-1',
+        email: 'test@example.com',
+        isActive: true,
+        validatePassword: jest.fn().mockResolvedValue(true)
+      };
+      mockFindOne.mockResolvedValueOnce(mockUser);
+
+      const result = await AuthService.validateUser('test@example.com', 'password');
+      expect(result).toEqual(mockUser);
+      expect(mockUser.validatePassword).toHaveBeenCalledWith('password');
+    });
+
+    it('devrait retourner null si l\'utilisateur n\'existe pas', async () => {
+      mockFindOne.mockResolvedValueOnce(null);
+      const result = await AuthService.validateUser('test@example.com', 'password');
+      expect(result).toBeNull();
+    });
+
+    it('devrait retourner null si l\'utilisateur est inactif', async () => {
+      mockFindOne.mockResolvedValueOnce({ id: 'uuid-1', isActive: false });
+      const result = await AuthService.validateUser('test@example.com', 'password');
+      expect(result).toBeNull();
+    });
+
+    it('devrait retourner null si le mot de passe est invalide', async () => {
+      const mockUser = {
+        id: 'uuid-1',
+        isActive: true,
+        validatePassword: jest.fn().mockResolvedValue(false)
+      };
+      mockFindOne.mockResolvedValueOnce(mockUser);
+      const result = await AuthService.validateUser('test@example.com', 'wrong');
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('refreshAccessToken', () => {
+    it('devrait générer de nouveaux tokens si le refresh token est valide', async () => {
+      const validToken = jwt.sign({ sub: 'user-123' }, process.env.JWT_SECRET || 'test-secret-key');
+      const mockUser = { id: 'user-123', phone: '123', role: UserRole.FARMER };
+      mockFindOne.mockResolvedValueOnce(mockUser);
+
+      const tokens = await AuthService.refreshAccessToken(validToken);
+      expect(tokens).toHaveProperty('accessToken');
+      expect(tokens).toHaveProperty('refreshToken');
+    });
+
+    it('devrait lever une erreur 401 si l\'utilisateur n\'existe plus', async () => {
+      const validToken = jwt.sign({ sub: 'user-123' }, process.env.JWT_SECRET || 'test-secret-key');
+      mockFindOne.mockResolvedValueOnce(null);
+
+      await expect(AuthService.refreshAccessToken(validToken))
+        .rejects.toMatchObject({ statusCode: 401, message: 'Token invalide' });
+    });
+
+    it('devrait lever une erreur 401 si le token est invalide', async () => {
+      await expect(AuthService.refreshAccessToken('invalid-token'))
+        .rejects.toMatchObject({ statusCode: 401, message: 'Refresh token invalide ou expiré' });
+    });
+  });
+
+  describe('getUserFromToken', () => {
+    it('devrait retourner l\'utilisateur si le token est valide', async () => {
+      const token = jwt.sign({ sub: 'user-123' }, process.env.JWT_SECRET || 'test-secret-key');
+      mockFindOne.mockResolvedValueOnce({ id: 'user-123' });
+
+      const user = await AuthService.getUserFromToken(token);
+      expect(user).toEqual({ id: 'user-123' });
+    });
+
+    it('devrait retourner null si le token est invalide', async () => {
+      const user = await AuthService.getUserFromToken('invalid');
+      expect(user).toBeNull();
+    });
+  });
+
+  describe('updateProfile', () => {
+    it('devrait mettre à jour l\'utilisateur avec les champs fournis', async () => {
+      const mockUser = { id: 'uuid-1', phone: 'old', email: 'old@example.com' };
+      mockFindOne
+        .mockResolvedValueOnce(mockUser) // findUser
+        .mockResolvedValueOnce(null)     // findPhone
+        .mockResolvedValueOnce(null);    // findEmail
+
+      mockSave.mockImplementationOnce((u) => Promise.resolve(u));
+
+      const updated = await AuthService.updateProfile('uuid-1', { phone: 'new', email: 'new@example.com', firstName: 'Jean' });
+      expect(updated.phone).toBe('new');
+      expect(updated.email).toBe('new@example.com');
+      expect(updated.firstName).toBe('Jean');
+      expect(mockSave).toHaveBeenCalled();
+    });
+
+    it('devrait lever une erreur 404 si l\'utilisateur n\'existe pas', async () => {
+      mockFindOne.mockResolvedValueOnce(null);
+      await expect(AuthService.updateProfile('uuid-empty', {}))
+        .rejects.toMatchObject({ statusCode: 404 });
+    });
+
+    it('devrait lever une erreur 409 si le téléphone est déjà utilisé', async () => {
+      mockFindOne
+        .mockResolvedValueOnce({ id: 'uuid-1', phone: 'old' })
+        .mockResolvedValueOnce({ id: 'uuid-2', phone: 'new' }); // findPhone trouve un autre user
+
+      await expect(AuthService.updateProfile('uuid-1', { phone: 'new' }))
+        .rejects.toMatchObject({ statusCode: 409, message: 'Ce numéro de téléphone est déjà utilisé' });
+    });
+
+    it('devrait lever une erreur 409 si l\'email est déjà utilisé', async () => {
+      mockFindOne
+        .mockResolvedValueOnce({ id: 'uuid-1', email: 'old@test.com' })
+        .mockResolvedValueOnce({ id: 'uuid-2', email: 'new@test.com' }); // findEmail trouve un autre user
+
+      await expect(AuthService.updateProfile('uuid-1', { email: 'new@test.com' }))
+        .rejects.toMatchObject({ statusCode: 409, message: 'Cet email est déjà utilisé' });
+    });
+  });
+
+  describe('2FA methods', () => {
+    it('generateTwoFactorSecret : devrait générer un secret et sauver l\'URL QR', async () => {
+      mockFindOne.mockResolvedValueOnce({ id: 'user', email: 'x@x.com' });
+      mockSave.mockResolvedValueOnce({});
+
+      const { secret, qrCodeUrl } = await AuthService.generateTwoFactorSecret('user');
+      expect(secret).toBeTruthy();
+      expect(qrCodeUrl).toMatch(/^data:image\/png;base64/);
+      expect(mockSave).toHaveBeenCalled();
+    });
+
+    it('enableTwoFactor : devrait activer le 2FA avec un token valide', async () => {
+      const secret = speakeasy.generateSecret().base32;
+      mockFindOne.mockResolvedValueOnce({ id: 'user', twoFactorSecret: secret });
+      // On mock la vérification qui sinon utiliserait le temps réel
+      jest.spyOn(AuthService, 'verifyTwoFactorToken').mockReturnValueOnce(true);
+      mockSave.mockImplementationOnce((u) => Promise.resolve(u));
+
+      const user = await AuthService.enableTwoFactor('user', '123456');
+      expect(user.twoFactorEnabled).toBe(true);
+    });
+
+    it('enableTwoFactor : erreur si token invalide', async () => {
+      mockFindOne.mockResolvedValueOnce({ id: 'user', twoFactorSecret: 'secret' });
+      jest.spyOn(AuthService, 'verifyTwoFactorToken').mockReturnValueOnce(false);
+
+      await expect(AuthService.enableTwoFactor('user', 'wrong'))
+        .rejects.toMatchObject({ statusCode: 400, message: 'Code 2FA invalide' });
+    });
+
+    it('disableTwoFactor : devrait désactiver le 2FA', async () => {
+      mockFindOne.mockResolvedValueOnce({ id: 'user', twoFactorEnabled: true, twoFactorSecret: 'secret' });
+      jest.spyOn(AuthService, 'verifyTwoFactorToken').mockReturnValueOnce(true);
+      mockSave.mockImplementationOnce((u) => Promise.resolve(u));
+
+      const user = await AuthService.disableTwoFactor('user', '123456');
+      expect(user.twoFactorEnabled).toBe(false);
+      expect(user.twoFactorSecret).toBeNull();
+    });
+  });
+
+  describe('resetPassword', () => {
+    it('devrait mettre à jour et hasher le mot de passe', async () => {
+      mockFindOne.mockResolvedValueOnce({ id: 'user', isActive: true });
+      mockSave.mockImplementationOnce((u) => Promise.resolve(u));
+
+      const user = await AuthService.resetPassword('user', 'new-pwd');
+      expect(user.password).toBeDefined();
+      expect(user.password).not.toBe('new-pwd');
+      expect(mockSave).toHaveBeenCalled();
+    });
+
+    it('devrait lever 403 si l\'utilisateur est inactif', async () => {
+      mockFindOne.mockResolvedValueOnce({ id: 'user', isActive: false });
+      await expect(AuthService.resetPassword('user', 'new-pwd'))
+        .rejects.toMatchObject({ statusCode: 403 });
+    });
+  });
+
+  describe('sendWelcomeEmail', () => {
+    it('ne devrait rien faire si aucun email défini', async () => {
+      await AuthService.sendWelcomeEmail({ id: 'user' } as User);
+      expect(nodemailer.createTransport).not.toHaveBeenCalled();
+    });
+
+    it('devrait envoyer l\'email si l\'utilisateur a un email', async () => {
+      process.env.SMTP_HOST = 'host';
+      process.env.SMTP_PORT = '587';
+      process.env.SMTP_USER = 'user';
+      process.env.SMTP_PASS = 'pass';
+
+      const mockSendMail = jest.fn().mockResolvedValue(true);
+      (nodemailer.createTransport as jest.Mock).mockReturnValue({ sendMail: mockSendMail });
+
+      await AuthService.sendWelcomeEmail({ id: 'u1', email: 'test@example.com', firstName: 'A' } as User);
+      expect(mockSendMail).toHaveBeenCalled();
     });
   });
 });
