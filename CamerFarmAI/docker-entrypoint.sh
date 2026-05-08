@@ -4,23 +4,26 @@ set -e
 # Function to run migrations
 run_migrations() {
   echo "Running database migrations..."
-  npm run migration:run || {
+  su-exec nodejs:nodejs npm run migration:run || {
     echo "Migration failed, but continuing..."
     return 0
   }
   echo "Migrations completed successfully"
 }
 
+# Bind-mounted host dirs are often root-owned; fix so UID 1001 (nodejs) can write avatars.
 ensure_upload_dirs() {
-  echo "Ensuring /app/uploads/avatars exists..."
-  mkdir -p /app/uploads/avatars 2>/dev/null || true
+  echo "Ensuring /app/uploads/avatars exists and is writable by nodejs..."
+  mkdir -p /app/uploads/avatars
+  chown -R nodejs:nodejs /app/uploads
+  chmod -R u+rwX /app/uploads
 }
 
 # Function to start the application
 start_app() {
   ensure_upload_dirs
   echo "Starting application..."
-  exec node dist/index.js
+  exec su-exec nodejs:nodejs node dist/index.js
 }
 
 # Main execution

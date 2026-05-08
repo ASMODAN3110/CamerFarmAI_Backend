@@ -23,8 +23,8 @@ RUN npx tsc
 # Stage 2: Production stage
 FROM node:20-alpine AS production
 
-# Install dumb-init for proper signal handling
-RUN apk add --no-cache dumb-init
+# dumb-init: signal handling; su-exec: drop privileges after fixing volume permissions
+RUN apk add --no-cache dumb-init su-exec
 
 # Create app directory
 WORKDIR /app
@@ -55,8 +55,7 @@ RUN chmod +x ./docker-entrypoint.sh
 RUN mkdir -p uploads/avatars && \
     chown -R nodejs:nodejs /app
 
-# Switch to non-root user
-USER nodejs
+# Entrypoint runs as root so bind-mounted ./uploads can be chown'd for UID 1001; app runs via su-exec.
 
 # Expose the application port
 EXPOSE 3000
