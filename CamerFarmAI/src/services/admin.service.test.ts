@@ -1,8 +1,6 @@
 import { AdminService } from './admin.service';
-import { AppDataSource } from '../config/database';
-import { User, UserRole } from '../models/User.entity';
+import { UserRole } from '../models/User.entity';
 import { AuthService } from './auth.service';
-import { HttpException } from '../utils/HttpException';
 
 // Mock du repository TypeORM
 const mockFind = jest.fn();

@@ -25,6 +25,12 @@ import { securityHeaders, logSecurityEvents, requestSizeLimiter } from './middle
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Derrière un reverse proxy (Traefik, etc.) pour que req.protocol / host reflètent HTTPS
+app.set(
+  'trust proxy',
+  process.env.TRUST_PROXY === 'false' ? false : Number(process.env.TRUST_PROXY_COUNT) || 1
+);
+
 // Middlewares de sécurité et configuration
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" },

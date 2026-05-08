@@ -406,8 +406,9 @@ export const uploadAvatar = async (req: Request, res: Response) => {
       });
     }
 
-    // Construire l'URL publique de l'avatar
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    // URL publique (derrière Traefik : trust proxy + option env pour éviter http://interne)
+    const envPublic = process.env.PUBLIC_BACKEND_URL?.replace(/\/+$/, '');
+    const baseUrl = envPublic || `${req.protocol}://${req.get('host')}`;
     const avatarUrl = `${baseUrl}/uploads/avatars/${file.filename}`;
 
     // Supprimer l'ancien fichier avatar s'il existe
@@ -445,8 +446,8 @@ export const uploadAvatar = async (req: Request, res: Response) => {
     return res.status(500).json({
       success: false,
       message: 'Erreur lors de la sauvegarde de l\'avatar',
-      ...(process.env.NODE_ENV === 'development' && { 
-        error: error?.message 
+      ...(process.env.NODE_ENV === 'development' && {
+        error: error?.message,
       }),
     });
   }

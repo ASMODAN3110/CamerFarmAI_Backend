@@ -1,7 +1,5 @@
 // src/models/Plantation.entity.test.ts
 import { Plantation } from './Plantation.entity';
-import { SensorStatus } from './Sensor.entity';
-import { ActuatorStatus } from './Actuator.entity';
 
 describe('Plantation.getEtat', () => {
   // Helper pour créer une plantation avec des capteurs et actionneurs

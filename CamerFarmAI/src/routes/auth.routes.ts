@@ -1,5 +1,6 @@
 // src/routes/auth.routes.ts
-import { Router } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
+import multer from 'multer';
 import * as authController from '../controllers/auth.controllers';
 import { protectRoute } from '../middleware/auth.middleware';
 import { body } from 'express-validator';
@@ -7,6 +8,38 @@ import { avatarUpload } from '../middleware/upload.middleware';
 import { sanitizeInput } from '../middleware/sanitize.middleware';
 
 const authRouter = Router();
+
+/** Multer appelle next(err) sur erreur ; sans ce wrapper Express renvoie souvent un 500 opaque. */
+const parseAvatarUpload = (req: Request, res: Response, next: NextFunction) => {
+  avatarUpload.single('avatar')(req, res, (err: unknown) => {
+    if (!err) {
+      next();
+      return;
+    }
+    if (err instanceof multer.MulterError) {
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        res.status(400).json({
+          success: false,
+          message: 'Fichier trop volumineux (maximum 5 Mo).',
+        });
+        return;
+      }
+      res.status(400).json({
+        success: false,
+        message: `Erreur d'upload : ${err.message}`,
+      });
+      return;
+    }
+    if (err instanceof Error) {
+      res.status(400).json({
+        success: false,
+        message: err.message,
+      });
+      return;
+    }
+    next(err as Error);
+  });
+};
 
 // Middlewares de validation pour l'inscription
 const validateRegister = [
@@ -310,7 +343,7 @@ authRouter.put('/profile', protectRoute, validateUpdateProfile, sanitizeInput, a
 authRouter.post(
   '/profile/avatar',
   protectRoute,
-  avatarUpload.single('avatar'),
+  parseAvatarUpload,
   authController.uploadAvatar
 );
 

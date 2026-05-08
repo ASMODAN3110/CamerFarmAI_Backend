@@ -1164,7 +1164,6 @@ describe('User.validatePassword', () => {
 
 
 import * as nodemailer from 'nodemailer';
-import { HttpException } from '../utils/HttpException';
 
 describe('AuthService (Méthodes en base de données / métier)', () => {
   let mockFindOne: jest.Mock;
