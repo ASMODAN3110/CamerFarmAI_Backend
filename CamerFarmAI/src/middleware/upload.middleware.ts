@@ -33,13 +33,25 @@ const storage = multer.diskStorage({
   },
 });
 
-// Filtre pour n'accepter que des images
+// Filtre images : certains navigateurs envoient application/octet-stream ou un mimetype vide
+const IMAGE_MIME = /^image\/(png|jpe?g|gif|webp)$/;
+const IMAGE_EXT = /\.(png|jpe?g|gif|webp)$/i;
+
 const fileFilter = (_req: Request, file: Express.Multer.File, cb: FileFilterCallback): void => {
-  if (/^image\/(png|jpe?g|gif|webp)$/.test(file.mimetype)) {
+  if (IMAGE_MIME.test(file.mimetype)) {
     cb(null, true);
-  } else {
-    cb(new Error('Seules les images (PNG, JPG, JPEG, GIF, WEBP) sont autorisées'));
+    return;
   }
+  const ext = path.extname(file.originalname || '');
+  const looseMime =
+    !file.mimetype ||
+    file.mimetype === 'application/octet-stream' ||
+    file.mimetype === '';
+  if (looseMime && IMAGE_EXT.test(ext)) {
+    cb(null, true);
+    return;
+  }
+  cb(new Error('Seules les images (PNG, JPG, JPEG, GIF, WEBP) sont autorisées'));
 };
 
 // Middleware multer configuré pour les avatars

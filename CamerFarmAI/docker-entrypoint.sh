@@ -11,8 +11,14 @@ run_migrations() {
   echo "Migrations completed successfully"
 }
 
+ensure_upload_dirs() {
+  echo "Ensuring /app/uploads/avatars exists..."
+  mkdir -p /app/uploads/avatars 2>/dev/null || true
+}
+
 # Function to start the application
 start_app() {
+  ensure_upload_dirs
   echo "Starting application..."
   exec node dist/index.js
 }

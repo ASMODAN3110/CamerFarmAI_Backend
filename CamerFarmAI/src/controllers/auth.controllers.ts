@@ -441,13 +441,45 @@ export const uploadAvatar = async (req: Request, res: Response) => {
         avatarUrl,
       },
     });
-  } catch (error: any) {
-    console.error('Erreur lors de l\'upload de l\'avatar:', error);
+  } catch (error: unknown) {
+    const err = error instanceof Error ? error : new Error(String(error));
+    const drv = error as { driverError?: { code?: string }; code?: string };
+    const pgCode = drv?.driverError?.code ?? drv?.code;
+
+    console.error('[POST /auth/profile/avatar]', {
+      incidentChecklistRef: 'multer_avatar_upload',
+      userId: user.id,
+      role: user.role,
+      message: err.message,
+      pgCode,
+      stack: err.stack,
+    });
+
+    if (pgCode === '42703') {
+      return res.status(500).json({
+        success: false,
+        message:
+          'Base de données incomplète : la colonne avatar est absente. Exécutez les migrations backend.',
+      });
+    }
+
+    const diskIssue =
+      /EACCES|EPERM|EROFS|ENOSPC/i.test(err.message) ||
+      pgCode === '53100';
+
+    if (diskIssue) {
+      return res.status(500).json({
+        success: false,
+        message:
+          'Impossible d\'enregistrer le fichier sur le serveur (espace disque ou droits sur le dossier uploads/avatars).',
+      });
+    }
+
     return res.status(500).json({
       success: false,
       message: 'Erreur lors de la sauvegarde de l\'avatar',
       ...(process.env.NODE_ENV === 'development' && {
-        error: error?.message,
+        error: err.message,
       }),
     });
   }
