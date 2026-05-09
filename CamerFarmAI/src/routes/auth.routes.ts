@@ -346,7 +346,7 @@ authRouter.put('/profile', protectRoute, validateUpdateProfile, sanitizeInput, a
  *       404:
  *         description: Utilisateur non trouvé
  *       500:
- *         description: Erreur serveur (ex: droits/écriture sur `uploads/avatars`)
+ *         description: "Erreur serveur (ex droits/écriture sur uploads/avatars)"
  */
 authRouter.post(
   '/profile/avatar',
