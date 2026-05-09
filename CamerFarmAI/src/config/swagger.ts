@@ -16,9 +16,16 @@ const options: swaggerJsdoc.Options = {
             {
                 // Utilise l'URL publique quand elle est configurée (Traefik/production),
                 // sinon fallback en local.
-                url: process.env.PUBLIC_BACKEND_URL
-                    ? process.env.PUBLIC_BACKEND_URL.replace(/\/+$/, '') + '/api/v1'
-                    : 'http://localhost:3000/api/v1',
+                url: (() => {
+                    const publicUrl = process.env.PUBLIC_BACKEND_URL?.replace(/\/+$/, '');
+                    if (!publicUrl) return 'http://localhost:3000/api/v1';
+
+                    // Si PUBLIC_BACKEND_URL contient déjà `/api/v1` (cas fréquent),
+                    // on évite de le dupliquer.
+                    if (/\/api\/v1\/?$/.test(publicUrl)) return publicUrl;
+
+                    return `${publicUrl}/api/v1`;
+                })(),
                 description: 'API base URL',
             },
         ],

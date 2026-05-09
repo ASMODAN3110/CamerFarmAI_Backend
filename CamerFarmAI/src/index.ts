@@ -16,6 +16,10 @@ import notificationRouter from './routes/notification.routes';
 import technicianRouter from './routes/technician.routes';
 import adminRouter from './routes/admin.routes';
 
+import { body } from 'express-validator';
+import { sanitizeInput } from './middleware/sanitize.middleware';
+import { googleLogin, googleRegister } from './controllers/auth.controllers';
+
 // Importer la configuration de la base de données
 import { AppDataSource } from './config/database';
 
@@ -86,6 +90,60 @@ app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 app.use('/api/v1/auth', authRouter);
 app.use('/auth', authRouter); // Fallback pour le frontend qui oublie /api/v1
 
+// Aliases explicites pour Google OAuth.
+// Objectif: éviter un 404 côté prod si la version déployée / le reverse-proxy n'expose pas correctement les routes routerées.
+app.post(
+  '/api/v1/auth/google/login',
+  [
+    body('idToken')
+      .notEmpty()
+      .withMessage('Le token Google est requis')
+      .isString()
+      .withMessage('Le token Google doit être une chaîne de caractères'),
+  ],
+  sanitizeInput,
+  googleLogin
+);
+
+app.post(
+  '/api/v1/auth/google/register',
+  [
+    body('idToken')
+      .notEmpty()
+      .withMessage('Le token Google est requis')
+      .isString()
+      .withMessage('Le token Google doit être une chaîne de caractères'),
+  ],
+  sanitizeInput,
+  googleRegister
+);
+
+app.post(
+  '/auth/google/login',
+  [
+    body('idToken')
+      .notEmpty()
+      .withMessage('Le token Google est requis')
+      .isString()
+      .withMessage('Le token Google doit être une chaîne de caractères'),
+  ],
+  sanitizeInput,
+  googleLogin
+);
+
+app.post(
+  '/auth/google/register',
+  [
+    body('idToken')
+      .notEmpty()
+      .withMessage('Le token Google est requis')
+      .isString()
+      .withMessage('Le token Google doit être une chaîne de caractères'),
+  ],
+  sanitizeInput,
+  googleRegister
+);
+
 app.use('/api/v1/plantations', plantationRouter);
 app.use('/plantations', plantationRouter);
 
@@ -101,8 +159,26 @@ app.use('/technician', technicianRouter);
 app.use('/api/v1/admin', adminRouter);
 app.use('/admin', adminRouter);
 
+// Si aucune route ne matche: renvoyer du JSON (pas une page HTML Express).
+// Ça évite le bug côté frontend du type "Cannot create property 'status' on string '<!DOCTYPE html>...'"
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: 'Not Found',
+    path: req.originalUrl,
+  });
+});
 
-
+// Handler d'erreur JSON standard (pour éviter les retours HTML incomplets)
+app.use(
+  (err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    const statusCode = err?.statusCode || err?.status || 500;
+    res.status(statusCode).json({
+      success: false,
+      message: err?.message || 'Internal Server Error',
+    });
+  }
+);
 
 // Initialiser la connexion à la base de données
 AppDataSource.initialize()
