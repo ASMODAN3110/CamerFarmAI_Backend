@@ -337,8 +337,16 @@ authRouter.put('/profile', protectRoute, validateUpdateProfile, sanitizeInput, a
  *                 type: string
  *                 format: binary
  *     responses:
- *       200:
- *         description: Avatar téléchargé avec succès
+ *       201:
+ *         description: Avatar uploadé avec succès
+ *       400:
+ *         description: Requête invalide / aucun fichier reçu (champ `avatar` requis)
+ *       401:
+ *         description: Non autorisé
+ *       404:
+ *         description: Utilisateur non trouvé
+ *       500:
+ *         description: Erreur serveur (ex: droits/écriture sur `uploads/avatars`)
  */
 authRouter.post(
   '/profile/avatar',

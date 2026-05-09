@@ -14,8 +14,12 @@ const options: swaggerJsdoc.Options = {
         },
         servers: [
             {
-                url: 'http://localhost:3000/api/v1',
-                description: 'Development server',
+                // Utilise l'URL publique quand elle est configurée (Traefik/production),
+                // sinon fallback en local.
+                url: process.env.PUBLIC_BACKEND_URL
+                    ? process.env.PUBLIC_BACKEND_URL.replace(/\/+$/, '') + '/api/v1'
+                    : 'http://localhost:3000/api/v1',
+                description: 'API base URL',
             },
         ],
         components: {

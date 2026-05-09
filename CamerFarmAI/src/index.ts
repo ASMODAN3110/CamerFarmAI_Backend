@@ -34,6 +34,9 @@ app.set(
 // Middlewares de sécurité et configuration
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" },
+  // Permet aux popups (ex: connexion Google) de communiquer avec la fenêtre d'origine via postMessage.
+  // Sans ça, certains navigateurs bloquent window.postMessage quand COOP empêche l'opener cross-origin.
+  crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
