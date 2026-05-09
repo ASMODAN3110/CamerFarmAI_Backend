@@ -409,15 +409,17 @@ export const uploadAvatar = async (req: Request, res: Response) => {
     // URL publique (derrière Traefik : trust proxy + option env pour éviter http://interne)
     const envPublic = process.env.PUBLIC_BACKEND_URL?.replace(/\/+$/, '');
     const baseUrl = envPublic || `${req.protocol}://${req.get('host')}`;
-    const avatarUrl = `${baseUrl}/uploads/avatars/${file.filename}`;
+    const avatarUrl = `${baseUrl}/uploads/avatars/${user.id}/${file.filename}`;
 
     // Supprimer l'ancien fichier avatar s'il existe
     if (fullUser.avatarUrl) {
       try {
-        // Extraire le nom de fichier depuis l'URL complète
-        const oldFileName = fullUser.avatarUrl.split('/uploads/avatars/')[1];
-        if (oldFileName) {
-          const oldFilePath = path.join(__dirname, '..', '..', 'uploads', 'avatars', oldFileName);
+        // Supporte 2 formats d'URL :
+        // 1) ancien format:  /uploads/avatars/<filename>
+        // 2) nouveau format:  /uploads/avatars/<userId>/<filename>
+        const oldRelative = fullUser.avatarUrl.split('/uploads/avatars/')[1];
+        if (oldRelative) {
+          const oldFilePath = path.join(__dirname, '..', '..', 'uploads', 'avatars', oldRelative);
           // Vérifier que le fichier existe avant de le supprimer
           if (fs.existsSync(oldFilePath)) {
             fs.unlinkSync(oldFilePath);

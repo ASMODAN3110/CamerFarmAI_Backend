@@ -4,22 +4,34 @@ import multer, { FileFilterCallback } from 'multer';
 import type { Request } from 'express';
 
 // Dossier de stockage des avatars (relatif à la racine du projet au runtime)
-const AVATARS_DIR = path.join(__dirname, '..', '..', 'uploads', 'avatars');
+const AVATARS_ROOT_DIR = path.join(__dirname, '..', '..', 'uploads', 'avatars');
 
-// S'assurer que le dossier existe
+// S'assurer que le dossier racine existe
 try {
-  if (!fs.existsSync(AVATARS_DIR)) {
-    fs.mkdirSync(AVATARS_DIR, { recursive: true });
+  if (!fs.existsSync(AVATARS_ROOT_DIR)) {
+    fs.mkdirSync(AVATARS_ROOT_DIR, { recursive: true });
   }
 } catch (error) {
-  console.warn(`Warning: Could not create uploads directory: ${AVATARS_DIR}`, error);
+  console.warn(`Warning: Could not create uploads directory: ${AVATARS_ROOT_DIR}`, error);
   // Continue anyway - multer will handle the error when trying to write
 }
 
 // Configuration du stockage sur disque
 const storage = multer.diskStorage({
-  destination: (_req: Request, _file: Express.Multer.File, cb: (error: Error | null, destination: string) => void) => {
-    cb(null, AVATARS_DIR);
+  destination: (req: Request, _file: Express.Multer.File, cb: (error: Error | null, destination: string) => void) => {
+    // protectRoute attache `req.user` avant l'upload
+    const anyReq = req as any;
+    const userId = anyReq.user?.id || 'anonymous';
+
+    const userDir = path.join(AVATARS_ROOT_DIR, String(userId));
+    try {
+      fs.mkdirSync(userDir, { recursive: true });
+    } catch (error) {
+      // Laisser multer échouer si le dossier n'est pas accessible en prod
+      return cb(error as Error, userDir);
+    }
+
+    cb(null, userDir);
   },
   filename: (req: Request, file: Express.Multer.File, cb: (error: Error | null, fileName: string) => void) => {
     const ext = path.extname(file.originalname) || '.png';

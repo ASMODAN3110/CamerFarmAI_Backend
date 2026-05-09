@@ -19,6 +19,7 @@ import adminRouter from './routes/admin.routes';
 import { body } from 'express-validator';
 import { sanitizeInput } from './middleware/sanitize.middleware';
 import { googleLogin, googleRegister } from './controllers/auth.controllers';
+import { migrateAvatarsOnStartup } from './utils/migrateAvatars';
 
 // Importer la configuration de la base de données
 import { AppDataSource } from './config/database';
@@ -182,8 +183,17 @@ app.use(
 
 // Initialiser la connexion à la base de données
 AppDataSource.initialize()
-  .then(() => {
+  .then(async () => {
     console.log('DB connected');
+
+    // Migration best-effort (ne bloque jamais le démarrage).
+    if (process.env.NODE_ENV === 'production') {
+      try {
+        await migrateAvatarsOnStartup();
+      } catch (err) {
+        console.error('[Avatar migration] Migration failed:', err);
+      }
+    }
 
     // Démarrer le serveur seulement après la connexion à la DB
     app.listen(PORT, () => {
