@@ -108,10 +108,19 @@ export class GoogleAuthService {
       if (user) {
         // Vérifier le provider
         if (user.authProvider === AuthProvider.LOCAL) {
-          throw new HttpException(
-            409,
-            'Un compte existe déjà avec cet email. Veuillez vous connecter avec votre mot de passe ou utiliser un autre compte Google.'
-          );
+          // Lier le compte LOCAL existant au compte Google (évite le 409)
+          if (!user.isActive) {
+            throw new HttpException(403, 'Votre compte a été désactivé. Veuillez contacter l\'administrateur.');
+          }
+
+          const { given_name, family_name, picture } = googleUserInfo;
+          user.googleId = googleId;
+          user.authProvider = AuthProvider.GOOGLE;
+          if (given_name) user.firstName = given_name;
+          if (family_name) user.lastName = family_name;
+          if (picture) user.avatarUrl = picture;
+
+          return await userRepository.save(user);
         } else if (user.authProvider === AuthProvider.GOOGLE) {
           // Compte Google existant mais sans googleId (cas rare)
           // Mettre à jour avec le googleId
@@ -147,10 +156,19 @@ export class GoogleAuthService {
       existingUser = await userRepository.findOne({ where: { email } });
       if (existingUser) {
         if (existingUser.authProvider === AuthProvider.LOCAL) {
-          throw new HttpException(
-            409,
-            'Un compte existe déjà avec cet email. Veuillez vous connecter avec votre mot de passe ou utiliser un autre compte Google.'
-          );
+          // Lier le compte LOCAL existant au compte Google (évite le 409)
+          if (!existingUser.isActive) {
+            throw new HttpException(403, 'Votre compte a été désactivé. Veuillez contacter l\'administrateur.');
+          }
+
+          const { given_name, family_name, picture } = googleUserInfo;
+          existingUser.googleId = googleId;
+          existingUser.authProvider = AuthProvider.GOOGLE;
+          if (given_name) existingUser.firstName = given_name;
+          if (family_name) existingUser.lastName = family_name;
+          if (picture) existingUser.avatarUrl = picture;
+
+          return await userRepository.save(existingUser);
         } else if (existingUser.authProvider === AuthProvider.GOOGLE) {
           throw new HttpException(409, 'Un compte existe déjà avec ce compte Google. Veuillez vous connecter.');
         }
@@ -216,13 +234,18 @@ export class GoogleAuthService {
         // Utilisateur existe avec cet email mais pas avec ce googleId
         // Vérifier le provider
         if (user.authProvider === AuthProvider.LOCAL) {
-          // Compte local existant avec le même email
-          // On peut soit lier les comptes, soit retourner une erreur
-          // Pour l'instant, on retourne une erreur pour éviter les conflits
-          throw new HttpException(
-            409,
-            'Un compte existe déjà avec cet email. Veuillez vous connecter avec votre mot de passe ou utiliser un autre compte Google.'
-          );
+          // Compte local existant avec le même email : on lie au lieu de refuser.
+          if (!user.isActive) {
+            throw new HttpException(403, 'Votre compte a été désactivé. Veuillez contacter l\'administrateur.');
+          }
+
+          user.googleId = googleId;
+          user.authProvider = AuthProvider.GOOGLE;
+          if (given_name) user.firstName = given_name;
+          if (family_name) user.lastName = family_name;
+          if (picture) user.avatarUrl = picture;
+
+          return await userRepository.save(user);
         } else if (user.authProvider === AuthProvider.GOOGLE) {
           // Compte Google existant mais sans googleId (cas rare)
           // Mettre à jour avec le googleId

@@ -90,16 +90,24 @@ describe('GoogleAuthService', () => {
             expect(mockSave).toHaveBeenCalled();
         });
 
-        it('devrait lever une erreur 409 si l\'email appartient à un compte LOCAL', async () => {
+        it('devrait lier un compte LOCAL au compte Google si l\'email correspond', async () => {
             mockFindOne
                 .mockResolvedValueOnce(null)
                 .mockResolvedValueOnce({
+                    id: 'uuid-local-1',
                     email: 'test@gmail.com',
-                    authProvider: AuthProvider.LOCAL
+                    googleId: null,
+                    authProvider: AuthProvider.LOCAL,
+                    isActive: true
                 } as User);
 
-            await expect(GoogleAuthService.findUser(mockGoogleUserInfo))
-                .rejects.toThrow(HttpException);
+            mockSave.mockImplementation(user => Promise.resolve(user));
+
+            const result = await GoogleAuthService.findUser(mockGoogleUserInfo);
+
+            expect(result.authProvider).toBe(AuthProvider.GOOGLE);
+            expect(result.googleId).toBe(mockGoogleUserInfo.sub);
+            expect(mockSave).toHaveBeenCalled();
         });
 
         it('devrait lever une erreur 404 si aucun utilisateur n\'est trouvé (ni googleId, ni email)', async () => {
