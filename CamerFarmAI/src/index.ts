@@ -20,6 +20,7 @@ import { body } from 'express-validator';
 import { sanitizeInput } from './middleware/sanitize.middleware';
 import { googleLogin, googleRegister } from './controllers/auth.controllers';
 import { migrateAvatarsOnStartup } from './utils/migrateAvatars';
+import { updateAllPlantationsSensorStatuses } from './services/sensor-status.service';
 
 // Importer la configuration de la base de données
 import { AppDataSource } from './config/database';
@@ -196,6 +197,19 @@ AppDataSource.initialize()
     }
 
     // Démarrer le serveur seulement après la connexion à la DB
+    // Sync périodique des statuts capteurs (active/inactive)
+    // Objectif: ne pas attendre qu'un utilisateur se connecte pour refléter les changements.
+    const refreshMs = Number(process.env.SENSOR_STATUS_REFRESH_MS) || 5 * 60 * 1000; // défaut: toutes les 5 minutes
+    // Best-effort initial
+    updateAllPlantationsSensorStatuses().catch((err) => {
+      console.error('[Sensor status sync] Initial sync failed:', err);
+    });
+    setInterval(() => {
+      updateAllPlantationsSensorStatuses().catch((err) => {
+        console.error('[Sensor status sync] Interval sync failed:', err);
+      });
+    }, refreshMs);
+
     app.listen(PORT, () => {
       console.log(`Serveur démarré sur http://localhost:${PORT}`);
     });
