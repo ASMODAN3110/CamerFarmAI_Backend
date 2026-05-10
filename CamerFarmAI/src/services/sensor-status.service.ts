@@ -39,11 +39,15 @@ export async function updateSensorStatusesForPlantation(
       order: { timestamp: 'DESC' },
     });
 
-    // Si aucune lecture => on ne change pas le statut (comportement actuel des controllers)
-    if (!latestReading) continue;
-
-    const shouldBeInactive = latestReading.timestamp < oneHourAgo;
-    const newStatus = shouldBeInactive ? SensorStatus.INACTIVE : SensorStatus.ACTIVE;
+    // Cas important:
+    // - si aucune lecture n'existe pour ce capteur, on ne peut pas calculer "dernier timestamp"
+    //   => on marque INACTIVE pour éviter des statuts bloqués à ACTIVE.
+    // - si une lecture existe, on compare au seuil 1 heure.
+    const newStatus = latestReading
+      ? latestReading.timestamp < oneHourAgo
+        ? SensorStatus.INACTIVE
+        : SensorStatus.ACTIVE
+      : SensorStatus.INACTIVE;
 
     if (oldStatus === newStatus) continue;
 
