@@ -9,7 +9,8 @@ export class AddWebNotificationsForPauline1700000012000 implements MigrationInte
     );
 
     if (userResult.length === 0) {
-      throw new Error('Utilisateur pauline@example.com non trouvé. Veuillez créer cet utilisateur d\'abord.');
+      // Seed optionnel : ne bloque pas le run des migrations si l'utilisateur n'existe pas.
+      return;
     }
 
     const userId = userResult[0].id;

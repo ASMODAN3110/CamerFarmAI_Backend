@@ -111,6 +111,7 @@ export function getEventTypeLabel(eventType: string): string {
     'mode_changed': '🔄 Changement de Mode',
     'sensor_active': '✅ Capteur Actif',
     'sensor_inactive': '⚠️ Capteur Inactif',
+    'esp32_alert': '📡 Alerte ESP32',
   };
   return labels[eventType] || `Notification : ${eventType}`;
 }

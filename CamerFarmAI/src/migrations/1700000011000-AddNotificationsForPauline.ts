@@ -9,7 +9,9 @@ export class AddNotificationsForPauline1700000011000 implements MigrationInterfa
     );
 
     if (userResult.length === 0) {
-      throw new Error('Utilisateur pauline@example.com non trouvé. Veuillez créer cet utilisateur d\'abord.');
+      // Migration de seed : si l'utilisateur n'existe pas dans la DB cible,
+      // on ne bloque pas le run des migrations.
+      return;
     }
 
     const userId = userResult[0].id;

@@ -18,6 +18,7 @@ export enum EventType {
   MODE_CHANGED = 'mode_changed',
   SENSOR_ACTIVE = 'sensor_active',
   SENSOR_INACTIVE = 'sensor_inactive',
+  ESP32_ALERT = 'esp32_alert',
 }
 
 @Entity('events')

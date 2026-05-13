@@ -169,7 +169,7 @@ Content-Type: application/json
   ```
 
 - **404 (login)** : Aucun compte trouvé → rediriger vers l'inscription
-- **409 (register)** : Compte existe déjà → rediriger vers la connexion
+- **409** : Conflit de compte Google (ex: `googleId` déjà existant) → rediriger vers la connexion
 - **401** : Token Google invalide ou expiré
 
 > 📘 **Configuration** : Consultez [CONFIGURATION_GOOGLE_OAUTH.md](./CONFIGURATION_GOOGLE_OAUTH.md) pour la configuration complète de Google OAuth 2.0
@@ -197,8 +197,13 @@ Content-Type: application/json
 | GET | `/:id/sensors/:sensorId/readings` | Obtenir les lectures d'un capteur | Privé (FARMER propriétaire) |
 
 **Note sur les statuts des capteurs :**
-- Les statuts (`ACTIVE`/`INACTIVE`) sont mis à jour automatiquement lors des appels à `GET /:id` et `GET /:id/sensors`
-- **Désactivation automatique** : Un capteur devient `INACTIVE` s'il n'a pas reçu de lecture depuis **1 heure**
+- Les statuts (`ACTIVE`/`INACTIVE`) sont mis à jour :
+  - avant le retour des endpoints `GET /:id` et `GET /:id/sensors`
+  - périodiquement en tâche de fond (toutes les 5 minutes par défaut)
+  - via le script utilitaire `src/scripts/sync-sensor-status.ts` (mode `--once` ou daemon)
+- **Désactivation automatique** :
+  - Un capteur devient `INACTIVE` si sa **dernière lecture** date de plus de **1 heure**
+  - Un capteur devient aussi `INACTIVE` s'il n'a **aucune lecture** en base (aucun `sensor_readings` associé)
 - **Activation automatique** : Un capteur redevient `ACTIVE` dès qu'une nouvelle lecture est ajoutée via `POST /:id/sensors/:sensorId/readings`
 - **Notifications** : Le propriétaire reçoit une notification (WEB, EMAIL) à chaque changement de statut
 - **Modification manuelle** : Le statut peut être modifié manuellement via `PATCH /:id/sensors/:sensorId` avec `{ "status": "active" | "inactive" }`
@@ -259,7 +264,7 @@ Content-Type: application/json
 | GET | `/farmers` | Lister les agriculteurs avec recherche optionnelle. Formats supportés : `?search=terme` (simple) ou `?search[]=mot1&search[]=mot2` (multi-mots). Recherche dans firstName, lastName et location. | Privé (TECHNICIAN, ADMIN) |
 | GET | `/farmers/:farmerId/plantations` | Lister les plantations d'un agriculteur spécifique | Privé (TECHNICIAN, ADMIN) |
 
-**Note** : Les statuts des capteurs sont automatiquement mis à jour avant le calcul des statistiques et lors de la récupération des plantations.
+**Note** : Les statuts des capteurs sont mis à jour automatiquement avant le calcul des statistiques, lors de la récupération des plantations, et aussi périodiquement en tâche de fond.
 
 #### Recherche d'agriculteurs pour `/technician/farmers`
 
@@ -445,7 +450,7 @@ GET /api/v1/technician/farmers?search[]=Jean&search[]=Dupont
 - **Gestion automatique des statuts** : 
   - Les capteurs passent automatiquement à `INACTIVE` s'ils n'envoient pas de valeur depuis **1 heure**
   - Les capteurs redeviennent `ACTIVE` automatiquement dès qu'une nouvelle lecture est ajoutée
-  - La vérification des statuts se fait lors des appels API (`GET /plantations/:id`, `GET /plantations/:id/sensors`, etc.)
+  - La vérification des statuts se fait lors des appels API (`GET /plantations/:id`, `GET /plantations/:id/sensors`, etc.) et aussi périodiquement (tâche de fond)
   - Modification manuelle possible via `PATCH /plantations/:id/sensors/:sensorId`
 - **Notifications de changement de statut** : Le propriétaire de la plantation reçoit automatiquement des notifications (WEB, EMAIL) lorsque ses capteurs changent de statut (ACTIVE ↔ INACTIVE)
 
@@ -611,7 +616,7 @@ Consultez [SECURITE.md](./SECURITE.md) pour plus de détails.
 - [x] Gestion des rôles (FARMER, TECHNICIAN, ADMIN)
 - [x] CRUD plantations avec mode automatique/manuel
 - [x] Gestion des capteurs (5 types) avec configuration de seuils statiques et saisonniers
-- [x] Gestion automatique des statuts des capteurs (ACTIVE/INACTIVE basés sur l'activité)
+- [x] Gestion automatique des statuts des capteurs (ACTIVE/INACTIVE basés sur l'activité + sync périodique)
 - [x] Gestion des actionneurs (pompe, ventilateur, éclairage)
 - [x] Système d'événements (seuils, actionneurs, mode)
 - [x] Notifications multi-canaux (WEB, EMAIL)

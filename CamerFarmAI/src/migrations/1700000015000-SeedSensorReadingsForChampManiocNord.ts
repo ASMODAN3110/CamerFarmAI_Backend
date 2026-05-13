@@ -9,7 +9,8 @@ export class SeedSensorReadingsForChampManiocNord1700000015000 implements Migrat
     );
 
     if (userResult.length === 0) {
-      throw new Error('Utilisateur pauline@example.com non trouvé. Veuillez créer cet utilisateur d\'abord.');
+      // Seed optionnel : si l'utilisateur n'existe pas dans la DB cible, on ne bloque pas le run.
+      return;
     }
 
     const userId = userResult[0].id;
